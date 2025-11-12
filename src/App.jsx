@@ -34,11 +34,11 @@ function App() {
       setForm({ username: '', email: '' });
       setMessage(isLogin ? 'Вошли!' : 'Зарегистрированы!');
     } catch (err) {
-      setMessage(err.message);
+      setMessage('Ошибка: ' + err.message);
     }
   };
 
-  // === СОЗДАНИЕ ===
+  // === СОЗДАНИЕ ПОЕЗДКИ ===
   const handleCreateTrip = async (e) => {
     e.preventDefault();
     try {
@@ -47,20 +47,23 @@ function App() {
       setShowForm(false);
       setMessage('Поездка создана!');
     } catch (err) {
-      setMessage(err.message);
+      setMessage('Ошибка: ' + err.message);
     }
   };
 
   // === ПРИГЛАШЕНИЕ ===
   const handleInvite = async (tripId) => {
     const emails = inviteEmails.split(',').map(e => e.trim()).filter(Boolean);
-    if (!emails.length) return;
+    if (!emails.length) {
+      setMessage('Введите email');
+      return;
+    }
     try {
       const sent = await sendInvites(tripId, emails, user.id);
       setInviteEmails('');
-      setMessage(sent ? `Приглашены: ${sent.join(', ')}` : 'Никого не пригласили');
+      setMessage(`Приглашения отправлены: ${sent.join(', ')}`);
     } catch (err) {
-      setMessage(err.message);
+      setMessage('Ошибка: ' + err.message);
     }
   };
 
@@ -96,7 +99,7 @@ function App() {
         <div className="auth-card">
           <h1>TripTogether</h1>
           <h2>{isLogin ? 'Вход' : 'Регистрация'}</h2>
-          {message && <div className={`msg ${message.includes('ошибка') ? 'error' : 'success'}`}>{message}</div>}
+          {message && <div className={`msg ${message.includes('Ошибка') ? 'error' : 'success'}`}>{message}</div>}
           <form onSubmit={handleAuth}>
             {!isLogin && (
               <input placeholder="Имя" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} required />
@@ -125,7 +128,7 @@ function App() {
 
       {data.invites.length > 0 && (
         <div className="invites">
-          <h3>Приглашения</h3>
+          <h3>Приглашения ({data.invites.length})</h3>
           {data.invites.map(inv => (
             <div key={inv.tripId} className="invite-item">
               <span><strong>{inv.inviter}</strong> → "{inv.tripName}"</span>
@@ -137,7 +140,7 @@ function App() {
         </div>
       )}
 
-      {message && <div className={`msg ${message.includes('ошибка') ? 'error' : 'success'}`}>{message}</div>}
+      {message && <div className={`msg ${message.includes('Ошибка') ? 'error' : 'success'}`}>{message}</div>}
 
       {showForm ? (
         <div className="card">
@@ -192,7 +195,7 @@ function App() {
                     {isAdmin && (
                       <div className="invite">
                         <input
-                          placeholder="email1, email2"
+                          placeholder="email1@example.com, email2@example.com"
                           value={inviteEmails}
                           onChange={e => setInviteEmails(e.target.value)}
                         />
