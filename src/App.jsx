@@ -24,10 +24,11 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState([]);
+  const [pendingInvites, setPendingInvites] = useState([]);
   const [showTripForm, setShowTripForm] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
-  const [pendingInvites, setPendingInvites] = useState([]);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [loadingData, setLoadingData] = useState(true); // НОВОЕ!
 
   // === АВТОРИЗАЦИЯ ===
   const handleAuthSubmit = async (e) => {
@@ -39,8 +40,7 @@ function App() {
         ? await login(formData.email, formData.password)
         : await register(formData.username, formData.email, formData.password);
 
-      const userData = res.user;
-      setUser(userData);
+      setUser(res.user);
       setMessage(isLogin ? 'Вход успешен!' : 'Регистрация успешна!');
       setFormData({ username: '', email: '', password: '' });
     } catch (error) {
@@ -114,7 +114,7 @@ function App() {
     }
   };
 
-  // === УДАЛЕНИЕ ПОЕЗДКИ ===
+  // === УДАЛЕНИЕ ===
   const handleDeleteTrip = async (tripId, tripName) => {
     if (!user) return;
     if (!window.confirm(`Удалить "${tripName}"?`)) return;
@@ -135,7 +135,7 @@ function App() {
     setMessage('Вы вышли из системы');
   };
 
-  // === ВАЛИДАЦИЯ ДАТ ===
+  // === ВАЛИДАЦИЯ ===
   const isValidDate = (dateString) => {
     const date = new Date(dateString);
     return date instanceof Date && !isNaN(date);
@@ -151,16 +151,22 @@ function App() {
   const formatDate = (d) => new Date(d).toLocaleDateString('ru-RU');
   const formatBudget = (b) => new Intl.NumberFormat('ru-RU').format(b) + ' ₽';
 
-  // === РЕАЛТАЙМ ПОДПИСКИ ===
+  // === РЕАЛТАЙМ ПОДПИСКИ + ЗАЩИТА ОТ БЕЛОГО ЭКРАНА ===
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoadingData(false);
+      return;
+    }
+
+    setLoadingData(true);
 
     const unsubscribeTrips = subscribeToTrips(user.id, (tripData) => {
-      setTrips(tripData);
+      setTrips(tripData || []);
+      setLoadingData(false);
     });
 
     const unsubscribeInvites = subscribeToInvitations(user.id, (inviteData) => {
-      setPendingInvites(inviteData);
+      setPendingInvites(inviteData || []);
     });
 
     return () => {
@@ -283,9 +289,9 @@ function App() {
           </div>
         )}
 
-        {/* ФОРМА СОЗДАНИЯ */}
+        {/* ФОРМА / ДЕТАЛИ / СПИСОК */}
         {showTripForm ? (
-          <div style={{ background: ' 1px solid #555', borderRadius: 12, padding: 28, backdropFilter: 'blur(10px)' }}>
+          <div style={{ background: 'rgba(255,255,255,0.1)', padding: 28, borderRadius: 12, backdropFilter: 'blur(10px)' }}>
             <h3>Новое путешествие</h3>
             <form onSubmit={handleTripSubmit}>
               <input name="name" placeholder="Название" value={tripFormData.name} onChange={e => setTripFormData({ ...tripFormData, name: e.target.value })} required style={{ width: '100%', padding: 12, marginBottom: 16, borderRadius: 8, border: '1px solid #555', background: 'rgba(255,255,255,0.1)', color: '#fff' }} />
@@ -311,7 +317,7 @@ function App() {
               <p><strong>Куда:</strong> {selectedTrip.destination}</p>
               <p><strong>Даты:</strong> {formatDate(selectedTrip.startDate)} — {formatDate(selectedTrip.endDate)}</p>
               <p><strong>Бюджет:</strong> {formatBudget(selectedTrip.budget)}</p>
-              <p><strong>Участники:</strong> {selectedTrip.members.map(m => `${m.username} (${m.role === 'admin' ? 'Админ' : 'Участник'})`).join(', ')}</p>
+              <p><strong>Участники:</strong> {selectedTrip.members?.map(m => `${m.username} (${m.role === 'admin' ? 'Админ' : 'Участник'})`).join(', ') || '—'}</p>
             </div>
           </div>
         ) : (
@@ -320,7 +326,12 @@ function App() {
               <h2>Мои путешествия</h2>
               <button onClick={() => setShowTripForm(true)} style={{ padding: '12px 24px', background: '#28a745', color: '#fff', border: 'none', borderRadius: 8, fontSize: 16 }}>+ Создать</button>
             </div>
-            {trips.length === 0 ? (
+
+            {loadingData ? (
+              <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
+                <p>Загрузка путешествий...</p>
+              </div>
+            ) : trips.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
                 <h3>Пока нет путешествий</h3>
                 <p>Нажмите «Создать», чтобы начать планировать!</p>
@@ -328,12 +339,12 @@ function App() {
             ) : (
               <div style={{ display: 'grid', gap: 20 }}>
                 {trips.map(trip => {
-                  const isAdmin = trip.members.some(m => m.userId === user.id && m.role === 'admin');
+                  const isAdmin = trip.members?.some(m => m.userId === user.id && m.role === 'admin') || false;
                   return (
                     <div key={trip.id} style={{ background: 'rgba(255,255,255,0.1)', padding: 20, borderRadius: 12, position: 'relative', backdropFilter: 'blur(5px)' }}>
                       {isAdmin && (
                         <div style={{ position: 'absolute', top: 12, right: 12 }}>
-                          <button onClick={() => handleDeleteTrip(trip.id, trip.name)} style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 6, fontSize: 12, marginRight: 8 }}>Удалить</button>
+                          <button onClick={() => handleDeleteTrip(trip.id, trip.name)} style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>Удалить</button>
                         </div>
                       )}
                       <h3 style={{ margin: '0 0 8px', fontSize: 20 }}>{trip.name}</h3>
@@ -342,7 +353,7 @@ function App() {
                         <div><strong>Куда:</strong> {trip.destination}</div>
                         <div><strong>Даты:</strong> {formatDate(trip.startDate)} — {formatDate(trip.endDate)}</div>
                         <div><strong>Бюджет:</strong> {formatBudget(trip.budget)}</div>
-                        <div><strong>Участники:</strong> {trip.members.length}</div>
+                        <div><strong>Участники:</strong> {trip.members?.length || 0}</div>
                       </div>
 
                       {isAdmin && (

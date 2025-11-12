@@ -2,7 +2,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, get, push, onValue, remove } from 'firebase/database';
 
-// ТВОЙ КОНФИГ
 const firebaseConfig = {
   apiKey: "AIzaSyCw8Ng4OddMJDxBI7elLPfwQdrGTZagPgI",
   authDomain: "travel-planner-firebase-a7eef.firebaseapp.com",
@@ -37,17 +36,11 @@ export const login = async (email, password) => {
   return { user: { id: user.id, username: user.username, email } };
 };
 
-
-
-// === ПРИГЛАШЕНИЯ (ИСПРАВЛЕНО) ===
 // === РЕАЛТАЙМ ПРИГЛАШЕНИЯ ===
 let invitesListener = null;
 
 export const subscribeToInvitations = (userId, callback) => {
-  // Отписываемся от старого, если был
-  if (invitesListener) {
-    invitesListener();
-  }
+  if (invitesListener) invitesListener();
 
   const tripsRef = ref(db, 'trips');
   const unsubscribe = onValue(tripsRef, (snapshot) => {
@@ -68,7 +61,7 @@ export const subscribeToInvitations = (userId, callback) => {
       }
     });
 
-    callback(invitations); // Передаём данные в App.jsx
+    callback(invitations);
   });
 
   invitesListener = unsubscribe;
@@ -86,9 +79,7 @@ export const unsubscribeFromInvitations = () => {
 let tripsListener = null;
 
 export const subscribeToTrips = (userId, callback) => {
-  if (tripsListener) {
-    tripsListener();
-  }
+  if (tripsListener) tripsListener();
 
   const tripsRef = ref(db, 'trips');
   const unsubscribe = onValue(tripsRef, (snapshot) => {
