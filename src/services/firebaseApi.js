@@ -2,7 +2,7 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, get, push, onValue, remove } from 'firebase/database';
 
-// ТВОЙ КОНФИГ — 100% ПРАВИЛЬНЫЙ!
+// ТВОЙ КОНФИГ
 const firebaseConfig = {
   apiKey: "AIzaSyCw8Ng4OddMJDxBI7elLPfwQdrGTZagPgI",
   authDomain: "travel-planner-firebase-a7eef.firebaseapp.com",
@@ -37,20 +37,48 @@ export const login = async (email, password) => {
   return { user: { id: user.id, username: user.username, email } };
 };
 
-// === ПОЕЗДКИ ===
+// === ПОЕЗДКИ (ИСПРАВЛЕНО: onValue + resolve) ===
 export const getTrips = (userId) => {
   return new Promise((resolve) => {
     const tripsRef = ref(db, 'trips');
-    onValue(tripsRef, (snapshot) => {
+    const unsubscribe = onValue(tripsRef, (snapshot) => {
       const trips = snapshot.val() || {};
       const userTrips = Object.values(trips).filter(t =>
         t.createdBy === userId || (t.members && Object.values(t.members).some(m => m.userId === userId))
       );
-      resolve(userTrips);
+      resolve(userTrips); // ВОЗВРАЩАЕМ ДАННЫЕ!
+      unsubscribe(); // Отписываемся после первого получения
     }, { onlyOnce: true });
   });
 };
 
+// === ПРИГЛАШЕНИЯ (ИСПРАВЛЕНО) ===
+export const getPendingInvitations = (userId) => {
+  return new Promise((resolve) => {
+    const tripsRef = ref(db, 'trips');
+    const unsubscribe = onValue(tripsRef, (snapshot) => {
+      const trips = snapshot.val() || {};
+      const invitations = [];
+      Object.entries(trips).forEach(([tripId, trip]) => {
+        if (trip.invitations) {
+          Object.values(trip.invitations).forEach(inv => {
+            if (inv.userId === userId && inv.status === 'pending') {
+              invitations.push({
+                tripId,
+                tripName: trip.name,
+                inviter: Object.values(trip.members).find(m => m.role === 'admin')?.username || 'Админ'
+              });
+            }
+          });
+        }
+      });
+      resolve(invitations); // ВОЗВРАЩАЕМ ДАННЫЕ!
+      unsubscribe();
+    }, { onlyOnce: true });
+  });
+};
+
+// === СОЗДАНИЕ ПОЕЗДКИ ===
 export const createTrip = async (tripData) => {
   const tripRef = push(ref(db, 'trips'));
   const newTrip = {
@@ -63,6 +91,7 @@ export const createTrip = async (tripData) => {
   return { message: 'Путешествие создано!', trip: newTrip };
 };
 
+// === УДАЛЕНИЕ ===
 export const deleteTrip = async (tripId, userId) => {
   const tripRef = ref(db, `trips/${tripId}`);
   const snapshot = await get(tripRef);
@@ -74,7 +103,7 @@ export const deleteTrip = async (tripId, userId) => {
   return { message: 'Путешествие удалено' };
 };
 
-// === ПРИГЛАШЕНИЯ ===
+// === ПРИГЛАШЕНИЕ ===
 export const sendInvitation = async (tripId, email, inviterId) => {
   const usersRef = ref(db, 'users');
   const snapshot = await get(usersRef);
@@ -101,6 +130,7 @@ export const sendInvitation = async (tripId, email, inviterId) => {
   return { message: `Приглашение отправлено ${email}` };
 };
 
+// === ПРИНЯТИЕ ПРИГЛАШЕНИЯ ===
 export const acceptInvitation = async (tripId, userId) => {
   const tripRef = ref(db, `trips/${tripId}`);
   const snapshot = await get(tripRef);
@@ -121,28 +151,4 @@ export const acceptInvitation = async (tripId, userId) => {
   });
 
   return { message: 'Вы присоединились к поездке!' };
-};
-
-export const getPendingInvitations = (userId) => {
-  return new Promise((resolve) => {
-    const tripsRef = ref(db, 'trips');
-    onValue(tripsRef, (snapshot) => {
-      const trips = snapshot.val() || {};
-      const invitations = [];
-      Object.entries(trips).forEach(([tripId, trip]) => {
-        if (trip.invitations) {
-          Object.values(trip.invitations).forEach(inv => {
-            if (inv.userId === userId && inv.status === 'pending') {
-              invitations.push({
-                tripId,
-                tripName: trip.name,
-                inviter: Object.values(trip.members).find(m => m.role === 'admin')?.username || 'Админ'
-              });
-            }
-          });
-        }
-      });
-      resolve(invitations);
-    }, { onlyOnce: true });
-  });
 };
