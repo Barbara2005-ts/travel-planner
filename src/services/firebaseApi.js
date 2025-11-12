@@ -37,45 +37,77 @@ export const login = async (email, password) => {
   return { user: { id: user.id, username: user.username, email } };
 };
 
-// === ПОЕЗДКИ (ИСПРАВЛЕНО: onValue + resolve) ===
-export const getTrips = (userId) => {
-  return new Promise((resolve) => {
-    const tripsRef = ref(db, 'trips');
-    const unsubscribe = onValue(tripsRef, (snapshot) => {
-      const trips = snapshot.val() || {};
-      const userTrips = Object.values(trips).filter(t =>
-        t.createdBy === userId || (t.members && Object.values(t.members).some(m => m.userId === userId))
-      );
-      resolve(userTrips); // ВОЗВРАЩАЕМ ДАННЫЕ!
-      unsubscribe(); // Отписываемся после первого получения
-    }, { onlyOnce: true });
-  });
-};
+
 
 // === ПРИГЛАШЕНИЯ (ИСПРАВЛЕНО) ===
-export const getPendingInvitations = (userId) => {
-  return new Promise((resolve) => {
-    const tripsRef = ref(db, 'trips');
-    const unsubscribe = onValue(tripsRef, (snapshot) => {
-      const trips = snapshot.val() || {};
-      const invitations = [];
-      Object.entries(trips).forEach(([tripId, trip]) => {
-        if (trip.invitations) {
-          Object.values(trip.invitations).forEach(inv => {
-            if (inv.userId === userId && inv.status === 'pending') {
-              invitations.push({
-                tripId,
-                tripName: trip.name,
-                inviter: Object.values(trip.members).find(m => m.role === 'admin')?.username || 'Админ'
-              });
-            }
-          });
-        }
-      });
-      resolve(invitations); // ВОЗВРАЩАЕМ ДАННЫЕ!
-      unsubscribe();
-    }, { onlyOnce: true });
+// === РЕАЛТАЙМ ПРИГЛАШЕНИЯ ===
+let invitesListener = null;
+
+export const subscribeToInvitations = (userId, callback) => {
+  // Отписываемся от старого, если был
+  if (invitesListener) {
+    invitesListener();
+  }
+
+  const tripsRef = ref(db, 'trips');
+  const unsubscribe = onValue(tripsRef, (snapshot) => {
+    const trips = snapshot.val() || {};
+    const invitations = [];
+
+    Object.entries(trips).forEach(([tripId, trip]) => {
+      if (trip.invitations) {
+        Object.values(trip.invitations).forEach(inv => {
+          if (inv.userId === userId && inv.status === 'pending') {
+            invitations.push({
+              tripId,
+              tripName: trip.name,
+              inviter: Object.values(trip.members).find(m => m.role === 'admin')?.username || 'Админ'
+            });
+          }
+        });
+      }
+    });
+
+    callback(invitations); // Передаём данные в App.jsx
   });
+
+  invitesListener = unsubscribe;
+  return unsubscribe;
+};
+
+export const unsubscribeFromInvitations = () => {
+  if (invitesListener) {
+    invitesListener();
+    invitesListener = null;
+  }
+};
+
+// === РЕАЛТАЙМ ПОЕЗДКИ ===
+let tripsListener = null;
+
+export const subscribeToTrips = (userId, callback) => {
+  if (tripsListener) {
+    tripsListener();
+  }
+
+  const tripsRef = ref(db, 'trips');
+  const unsubscribe = onValue(tripsRef, (snapshot) => {
+    const trips = snapshot.val() || {};
+    const userTrips = Object.values(trips).filter(t =>
+      t.createdBy === userId || (t.members && Object.values(t.members).some(m => m.userId === userId))
+    );
+    callback(userTrips);
+  });
+
+  tripsListener = unsubscribe;
+  return unsubscribe;
+};
+
+export const unsubscribeFromTrips = () => {
+  if (tripsListener) {
+    tripsListener();
+    tripsListener = null;
+  }
 };
 
 // === СОЗДАНИЕ ПОЕЗДКИ ===

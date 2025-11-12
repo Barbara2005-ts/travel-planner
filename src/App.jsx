@@ -3,13 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { 
   register, 
   login, 
-  getTrips, 
   createTrip, 
   deleteTrip, 
   sendInvitation, 
-  acceptInvitation, 
-  getPendingInvitations 
-} from './services/firebaseApi'; // ИЗМЕНЕНО: firebaseApi, НЕ mockApi!
+  acceptInvitation,
+  subscribeToInvitations,
+  unsubscribeFromInvitations,
+  subscribeToTrips,
+  unsubscribeFromTrips
+} from './services/firebaseApi';
 import './App.css';
 
 function App() {
@@ -27,20 +29,6 @@ function App() {
   const [pendingInvites, setPendingInvites] = useState([]);
   const [inviteEmail, setInviteEmail] = useState('');
 
-  // === ЗАГРУЗКА ПОЕЗДОК И ПРИГЛАШЕНИЙ ===
-  const loadData = async (userId) => {
-    try {
-      const [tripData, inviteData] = await Promise.all([
-        getTrips(userId),
-        getPendingInvitations(userId)
-      ]);
-      setTrips(tripData);
-      setPendingInvites(inviteData);
-    } catch (error) {
-      setMessage('Ошибка загрузки: ' + error.message);
-    }
-  };
-
   // === АВТОРИЗАЦИЯ ===
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -53,11 +41,8 @@ function App() {
 
       const userData = res.user;
       setUser(userData);
-      // УДАЛЕНО: localStorage.setItem('user', ...)
       setMessage(isLogin ? 'Вход успешен!' : 'Регистрация успешна!');
       setFormData({ username: '', email: '', password: '' });
-
-      await loadData(userData.id); // await!
     } catch (error) {
       setMessage('Ошибка: ' + error.message);
     } finally {
@@ -67,23 +52,22 @@ function App() {
 
   // === ПРИГЛАШЕНИЕ ===
   const handleInvite = async (tripId) => {
-    if (!inviteEmail) return;
+    if (!user || !inviteEmail) return;
     try {
       await sendInvitation(tripId, inviteEmail, user.id);
       setMessage('Приглашение отправлено!');
       setInviteEmail('');
-      // Обновляем поездки
-      await loadData(user.id);
     } catch (error) {
       setMessage('Ошибка: ' + error.message);
     }
   };
 
+  // === ПРИНЯТИЕ ПРИГЛАШЕНИЯ ===
   const handleAcceptInvite = async (tripId) => {
+    if (!user) return;
     try {
       await acceptInvitation(tripId, user.id);
       setMessage('Вы присоединились!');
-      await loadData(user.id); // обновляем всё
     } catch (error) {
       setMessage('Ошибка: ' + error.message);
     }
@@ -91,6 +75,7 @@ function App() {
 
   // === СОЗДАНИЕ ПОЕЗДКИ ===
   const handleTripSubmit = async (e) => {
+    if (!user) return;
     e.preventDefault();
     setMessage('');
     setLoading(true);
@@ -122,7 +107,6 @@ function App() {
       setMessage('Путешествие создано!');
       setShowTripForm(false);
       setTripFormData({ name: '', description: '', destination: '', startDate: '', endDate: '', budget: '' });
-      await loadData(user.id);
     } catch (error) {
       setMessage('Ошибка: ' + error.message);
     } finally {
@@ -130,17 +114,19 @@ function App() {
     }
   };
 
+  // === УДАЛЕНИЕ ПОЕЗДКИ ===
   const handleDeleteTrip = async (tripId, tripName) => {
+    if (!user) return;
     if (!window.confirm(`Удалить "${tripName}"?`)) return;
     try {
       await deleteTrip(tripId, user.id);
       setMessage('Путешествие удалено');
-      await loadData(user.id);
     } catch (error) {
       setMessage('Ошибка: ' + error.message);
     }
   };
 
+  // === ВЫХОД ===
   const handleLogout = () => {
     setUser(null);
     setTrips([]);
@@ -149,6 +135,7 @@ function App() {
     setMessage('Вы вышли из системы');
   };
 
+  // === ВАЛИДАЦИЯ ДАТ ===
   const isValidDate = (dateString) => {
     const date = new Date(dateString);
     return date instanceof Date && !isNaN(date);
@@ -164,12 +151,31 @@ function App() {
   const formatDate = (d) => new Date(d).toLocaleDateString('ru-RU');
   const formatBudget = (b) => new Intl.NumberFormat('ru-RU').format(b) + ' ₽';
 
-  // === РЕАЛТАЙМ ОБНОВЛЕНИЕ ПОЕЗДОК ===
+  // === РЕАЛТАЙМ ПОДПИСКИ ===
   useEffect(() => {
-    if (user) {
-      loadData(user.id);
-    }
+    if (!user) return;
+
+    const unsubscribeTrips = subscribeToTrips(user.id, (tripData) => {
+      setTrips(tripData);
+    });
+
+    const unsubscribeInvites = subscribeToInvitations(user.id, (inviteData) => {
+      setPendingInvites(inviteData);
+    });
+
+    return () => {
+      unsubscribeFromTrips();
+      unsubscribeFromInvitations();
+    };
   }, [user]);
+
+  // === АВТО-ОЧИСТКА СООБЩЕНИЙ ===
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   // === ЭКРАН АВТОРИЗАЦИИ ===
   if (!user) {
@@ -270,16 +276,16 @@ function App() {
           </div>
         )}
 
+        {/* СООБЩЕНИЯ */}
         {message && (
           <div style={{ padding: 12, marginBottom: 20, background: message.includes('Ошибка') ? 'rgba(220,53,69,0.3)' : 'rgba(40,167,69,0.3)', borderRadius: 8, textAlign: 'center' }}>
             {message}
           </div>
         )}
 
-        {/* Остальной UI — без изменений */}
-        {/* (Форма создания, список поездок, детали — оставь как есть) */}
+        {/* ФОРМА СОЗДАНИЯ */}
         {showTripForm ? (
-          <div style={{ background: 'rgba(255,255,255,0.1)', padding: 28, borderRadius: 12, backdropFilter: 'blur(10px)' }}>
+          <div style={{ background: ' 1px solid #555', borderRadius: 12, padding: 28, backdropFilter: 'blur(10px)' }}>
             <h3>Новое путешествие</h3>
             <form onSubmit={handleTripSubmit}>
               <input name="name" placeholder="Название" value={tripFormData.name} onChange={e => setTripFormData({ ...tripFormData, name: e.target.value })} required style={{ width: '100%', padding: 12, marginBottom: 16, borderRadius: 8, border: '1px solid #555', background: 'rgba(255,255,255,0.1)', color: '#fff' }} />
