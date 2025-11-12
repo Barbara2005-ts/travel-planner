@@ -1,0 +1,50 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  color: #fff;
+  min-height: 100vh;
+}
+
+.App {
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.App-header {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+h1, h2, h3 {
+  margin-bottom: 1rem;
+}
+
+input, textarea, button {
+  font-family: inherit;
+}
+
+button {
+  transition: all 0.2s;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .App-header {
+    padding: 0 15px;
+  }
+}
