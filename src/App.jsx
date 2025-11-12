@@ -31,6 +31,18 @@ function App() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [loadingData, setLoadingData] = useState(true);
 
+  // === АВТОВХОД ===
+  useEffect(() => {
+    const savedUser = localStorage.getItem('travelUser');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        localStorage.removeItem('travelUser');
+      }
+    }
+  }, []);
+
   // === АВТОРИЗАЦИЯ + МИГРАЦИЯ ===
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -43,6 +55,7 @@ function App() {
 
       const userData = res.user;
       setUser(userData);
+      localStorage.setItem('travelUser', JSON.stringify(userData));
       setMessage(isLogin ? 'Вход успешен!' : 'Регистрация успешна!');
       setFormData({ username: '', email: '', password: '' });
 
@@ -60,16 +73,40 @@ function App() {
     }
   };
 
-  // === ПРИГЛАШЕНИЕ ===
-  const handleInvite = async (tripId) => {
-    if (!user || !inviteEmail) return;
-    try {
-      await sendInvitation(tripId, inviteEmail, user.id);
-      setMessage('Приглашение отправлено!');
-      setInviteEmail('');
-    } catch (error) {
-      setMessage('Ошибка: ' + error.message);
+  // === МНОЖЕСТВЕННЫЕ ПРИГЛАШЕНИЯ ===
+  const handleInviteMultiple = async (tripId) => {
+    if (!user || !inviteEmail.trim()) return;
+
+    const emails = inviteEmail
+      .split(/[\n,]+/)
+      .map(e => e.trim())
+      .filter(e => e && e.includes('@'));
+
+    if (emails.length === 0) {
+      setMessage('Введите хотя бы один email');
+      return;
     }
+
+    setLoading(true);
+    const results = [];
+    const errors = [];
+
+    for (const email of emails) {
+      try {
+        await sendInvitation(tripId, email, user.id);
+        results.push(email);
+      } catch (err) {
+        errors.push(`${email}: ${err.message}`);
+      }
+    }
+
+    setLoading(false);
+    setInviteEmail('');
+    setMessage(
+      results.length > 0
+        ? `Приглашения отправлены: ${results.join(', ')}`
+        : 'Ошибки: ' + errors.join('; ')
+    );
   };
 
   // === ПРИНЯТИЕ ===
@@ -142,6 +179,7 @@ function App() {
     setTrips([]);
     setPendingInvites([]);
     setSelectedTrip(null);
+    localStorage.removeItem('travelUser');
     setMessage('Вы вышли из системы');
   };
 
@@ -161,9 +199,12 @@ function App() {
   const formatDate = (d) => new Date(d).toLocaleDateString('ru-RU');
   const formatBudget = (b) => new Intl.NumberFormat('ru-RU').format(b) + ' ₽';
 
-  // === РЕАЛТАЙМ + ЗАЩИТА ===
+  // === РЕАЛТАЙМ ===
   useEffect(() => {
     if (!user) {
+      setTrips([]);
+      setPendingInvites([]);
+      setSelectedTrip(null);
       setLoadingData(false);
       return;
     }
@@ -364,23 +405,39 @@ function App() {
                         <div><strong>Куда:</strong> {trip.destination}</div>
                         <div><strong>Даты:</strong> {formatDate(trip.startDate)} — {formatDate(trip.endDate)}</div>
                         <div><strong>Бюджет:</strong> {formatBudget(trip.budget)}</div>
-                        <div><strong>Участники:</strong> {members.length}</div>
+                        <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+                          <strong>Участники:</strong>{' '}
+                          {members.length > 0 ? (
+                            <span style={{ fontSize: 13, color: '#aaa' }}>
+                              {members.map(m => m.username).join(', ')}
+                            </span>
+                          ) : (
+                            'Только вы'
+                          )}
+                        </div>
                       </div>
 
                       {isAdmin && (
-                        <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-                          <input
-                            type="email"
-                            placeholder="Email участника"
+                        <div style={{ marginTop: 16, display: 'flex', gap: 8, flexDirection: 'column' }}>
+                          <textarea
+                            placeholder="Email участников (через запятую или новую строку)"
                             value={inviteEmail}
                             onChange={(e) => setInviteEmail(e.target.value)}
-                            style={{ flex: 1, padding: 10, borderRadius: 6, border: '1px solid #555', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+                            style={{ 
+                              minHeight: 60, 
+                              padding: 10, 
+                              borderRadius: 6, 
+                              border: '1px solid #555', 
+                              background: 'rgba(255,255,255,0.1)', 
+                              color: '#fff',
+                              resize: 'vertical'
+                            }}
                           />
                           <button
-                            onClick={() => handleInvite(trip.id)}
+                            onClick={() => handleInviteMultiple(trip.id)}
                             style={{ padding: '10px 16px', background: '#007bff', color: '#fff', border: 'none', borderRadius: 6 }}
                           >
-                            Пригласить
+                            Пригласить всех
                           </button>
                         </div>
                       )}

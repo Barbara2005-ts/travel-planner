@@ -47,13 +47,11 @@ export const migrateOldUserData = async (user) => {
   for (const [tripId, trip] of Object.entries(trips)) {
     if (!trip) continue;
 
-    // Добавляем id
     if (!trip.id) {
       await set(ref(db, `trips/${tripId}/id`), tripId);
       updated = true;
     }
 
-    // Создаём members
     if (!trip.members && trip.createdBy) {
       const adminUsername = trip.username || 'Админ';
       await set(ref(db, `trips/${tripId}/members`), [
@@ -62,7 +60,6 @@ export const migrateOldUserData = async (user) => {
       updated = true;
     }
 
-    // invitations: объект → массив
     if (trip.invitations && typeof trip.invitations === 'object' && !Array.isArray(trip.invitations)) {
       const invitesArray = Object.values(trip.invitations);
       await set(ref(db, `trips/${tripId}/invitations`), invitesArray);
@@ -187,13 +184,12 @@ export const deleteTrip = async (tripId, userId) => {
 };
 
 // === ПРИГЛАШЕНИЕ ===
-// ИСПРАВЛЕНО: if (!)targetUser → if (!targetUser)
 export const sendInvitation = async (tripId, email, inviterId) => {
   const usersRef = ref(db, 'users');
   const snapshot = await get(usersRef);
   const users = snapshot.val() || {};
   const targetUser = Object.values(users).find(u => u.email === email);
-  if (!targetUser) throw new Error('Пользователь не найден'); // ИСПРАВЛЕНО
+  if (!targetUser) throw new Error('Пользователь не найден');
   if (targetUser.id === inviterId) throw new Error('Нельзя пригласить себя');
 
   const tripRef = ref(db, `trips/${tripId}`);
