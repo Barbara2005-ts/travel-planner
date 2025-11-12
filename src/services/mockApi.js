@@ -23,7 +23,7 @@ export const register = (username, email, password) => {
   if (db.users.find(u => u.email === email)) {
     throw new Error('Email уже используется');
   }
-  const userId = `user_${email}`; // ПОСТОЯННЫЙ ID ПО EMAIL
+  const userId = `user_${email}`;
   const user = { id: userId, username, email, password };
   db.users.push(user);
   saveDB(db);
@@ -54,6 +54,7 @@ export const createTrip = (tripData) => {
     id: Date.now().toString(),
     ...tripData,
     members: [{ userId: tripData.createdBy, username: tripData.username, role: 'admin' }],
+    invitations: [],
     status: 'planning'
   };
   db.trips.push(newTrip);
@@ -70,4 +71,71 @@ export const deleteTrip = (tripId, userId) => {
   db.trips = db.trips.filter(t => t.id !== tripId);
   saveDB(db);
   return { message: 'Путешествие удалено' };
+};
+
+// === ПРИГЛАШЕНИЯ ===
+export const sendInvitation = (tripId, email, inviterId) => {
+  const db = getDB();
+  const user = db.users.find(u => u.email === email);
+  if (!user) throw new Error('Пользователь не найден');
+  if (user.id === inviterId) throw new Error('Нельзя пригласить себя');
+
+  const trip = db.trips.find(t => t.id === tripId);
+  if (!trip) throw new Error('Поездка не найдена');
+  if (trip.members.some(m => m.userId === user.id)) {
+    throw new Error('Уже в поездке');
+  }
+
+  if (!trip.invitations) trip.invitations = [];
+  if (trip.invitations.some(i => i.userId === user.id && i.status === 'pending')) {
+    throw new Error('Приглашение уже отправлено');
+  }
+
+  trip.invitations.push({
+    userId: user.id,
+    username: user.username,
+    email: user.email,
+    status: 'pending'
+  });
+
+  saveDB(db);
+  return { message: `Приглашение отправлено ${email}` };
+};
+
+export const acceptInvitation = (tripId, userId) => {
+  const db = getDB();
+  const trip = db.trips.find(t => t.id === tripId);
+  if (!trip || !trip.invitations) throw new Error('Приглашение не найдено');
+
+  const invitation = trip.invitations.find(i => i.userId === userId && i.status === 'pending');
+  if (!invitation) throw new Error('Нет активного приглашения');
+
+  trip.invitations = trip.invitations.filter(i => i !== invitation);
+  trip.members.push({
+    userId: invitation.userId,
+    username: invitation.username,
+    role: 'member'
+  });
+
+  saveDB(db);
+  return { message: 'Вы присоединились к поездке!' };
+};
+
+export const getPendingInvitations = (userId) => {
+  const db = getDB();
+  const invitations = [];
+  db.trips.forEach(trip => {
+    if (trip.invitations) {
+      trip.invitations.forEach(inv => {
+        if (inv.userId === userId && inv.status === 'pending') {
+          invitations.push({
+            tripId: trip.id,
+            tripName: trip.name,
+            inviter: trip.members.find(m => m.role === 'admin')?.username || 'Админ'
+          });
+        }
+      });
+    }
+  });
+  return invitations;
 };

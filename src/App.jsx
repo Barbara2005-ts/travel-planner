@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { register, login, getTrips, createTrip, deleteTrip } from './services/mockApi';
+import { register, login, getTrips, createTrip, deleteTrip, sendInvitation, acceptInvitation, getPendingInvitations } from './services/mockApi';
 import './App.css';
 
 function App() {
@@ -15,53 +15,33 @@ function App() {
   const [trips, setTrips] = useState([]);
   const [showTripForm, setShowTripForm] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [inviteEmail, setInviteEmail] = useState('');
 
-  // === ЗАГРУЗКА ПОЛЬЗОВАТЕЛЯ И ПОЕЗДОК ===
+  // === ЗАГРУЗКА ===
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       const userData = JSON.parse(savedUser);
       setUser(userData);
-      // Загружаем поездки ПОСЛЕ установки user
       setTimeout(() => {
         loadUserTrips(userData.id);
+        setPendingInvites(getPendingInvitations(userData.id));
       }, 0);
     }
   }, []);
 
-  // Загружаем поездки только когда user установлен
   const loadUserTrips = (userId) => {
     if (userId) {
       setTrips(getTrips(userId));
     }
   };
 
-  // Валидация дат
-  const isValidDate = (dateString) => {
-    const date = new Date(dateString);
-    return date instanceof Date && !isNaN(date);
+  const loadInvites = (userId) => {
+    setPendingInvites(getPendingInvitations(userId));
   };
 
-  const isFutureDate = (dateString) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const date = new Date(dateString);
-    return date >= today;
-  };
-
-  // Удаление поездки
-  const handleDeleteTrip = async (tripId, tripName) => {
-    if (!window.confirm(`Удалить "${tripName}"?`)) return;
-    try {
-      await deleteTrip(tripId, user.id);
-      setMessage('Путешествие удалено');
-      setTimeout(() => loadUserTrips(user.id), 0);
-    } catch (error) {
-      setMessage('Ошибка: ' + error.message);
-    }
-  };
-
-  // Авторизация
+  // === АВТОРИЗАЦИЯ ===
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -77,9 +57,9 @@ function App() {
       setMessage(isLogin ? 'Вход успешен!' : 'Регистрация успешна!');
       setFormData({ username: '', email: '', password: '' });
 
-      // Загружаем поездки ПОСЛЕ установки user
       setTimeout(() => {
         loadUserTrips(userData.id);
+        loadInvites(userData.id);
       }, 0);
 
     } catch (error) {
@@ -89,7 +69,32 @@ function App() {
     }
   };
 
-  // Создание поездки
+  // === ПРИГЛАШЕНИЕ ===
+  const handleInvite = async (tripId) => {
+    if (!inviteEmail) return;
+    try {
+      await sendInvitation(tripId, inviteEmail, user.id);
+      setMessage('Приглашение отправлено!');
+      setInviteEmail('');
+    } catch (error) {
+      setMessage('Ошибка: ' + error.message);
+    }
+  };
+
+  const handleAcceptInvite = async (tripId) => {
+    try {
+      await acceptInvitation(tripId, user.id);
+      setMessage('Вы присоединились!');
+      setTimeout(() => {
+        loadUserTrips(user.id);
+        loadInvites(user.id);
+      }, 0);
+    } catch (error) {
+      setMessage('Ошибка: ' + error.message);
+    }
+  };
+
+  // === ОСТАЛЬНОЕ (создание, удаление и т.д.) ===
   const handleTripSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -122,12 +127,7 @@ function App() {
       setMessage('Путешествие создано!');
       setShowTripForm(false);
       setTripFormData({ name: '', description: '', destination: '', startDate: '', endDate: '', budget: '' });
-
-      // Загружаем поездки после создания
-      setTimeout(() => {
-        loadUserTrips(user.id);
-      }, 0);
-
+      setTimeout(() => loadUserTrips(user.id), 0);
     } catch (error) {
       setMessage('Ошибка: ' + error.message);
     } finally {
@@ -135,12 +135,35 @@ function App() {
     }
   };
 
+  const handleDeleteTrip = async (tripId, tripName) => {
+    if (!window.confirm(`Удалить "${tripName}"?`)) return;
+    try {
+      await deleteTrip(tripId, user.id);
+      setMessage('Путешествие удалено');
+      setTimeout(() => loadUserTrips(user.id), 0);
+    } catch (error) {
+      setMessage('Ошибка: ' + error.message);
+    }
+  };
+
   const handleLogout = () => {
     setUser(null);
     setTrips([]);
+    setPendingInvites([]);
     setSelectedTrip(null);
     setMessage('Вы вышли из системы');
-    // НЕ УДАЛЯЕМ user из localStorage!
+  };
+
+  const isValidDate = (dateString) => {
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date);
+  };
+
+  const isFutureDate = (dateString) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const date = new Date(dateString);
+    return date >= today;
   };
 
   const formatDate = (d) => new Date(d).toLocaleDateString('ru-RU');
@@ -227,14 +250,32 @@ function App() {
           </div>
         </div>
 
+        {/* ПРИГЛАШЕНИЯ */}
+        {pendingInvites.length > 0 && (
+          <div style={{ background: '#fff3cd', color: '#856404', padding: 16, borderRadius: 8, marginBottom: 20 }}>
+            <strong>Новые приглашения ({pendingInvites.length})</strong>
+            {pendingInvites.map(inv => (
+              <div key={inv.tripId} style={{ margin: '12px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span><strong>{inv.inviter}</strong> приглашает в "<em>{inv.tripName}</em>"</span>
+                <button
+                  onClick={() => handleAcceptInvite(inv.tripId)}
+                  style={{ background: '#28a745', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 14 }}
+                >
+                  Принять
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {message && (
           <div style={{ padding: 12, marginBottom: 20, background: message.includes('Ошибка') ? 'rgba(220,53,69,0.3)' : 'rgba(40,167,69,0.3)', borderRadius: 8, textAlign: 'center' }}>
             {message}
           </div>
         )}
 
-        {/* Форма создания */}
         {showTripForm ? (
+          // ... (форма создания — без изменений)
           <div style={{ background: 'rgba(255,255,255,0.1)', padding: 28, borderRadius: 12, backdropFilter: 'blur(10px)' }}>
             <h3>Новое путешествие</h3>
             <form onSubmit={handleTripSubmit}>
@@ -253,9 +294,9 @@ function App() {
             </form>
           </div>
         ) : selectedTrip ? (
-          /* Детали поездки */
+          // ... (детали поездки)
           <div>
-            <button onClick={() => setSelectedTrip(null)} style={{ padding: '8px 16px', background: '#6c757d', color: '#fff', border: 'none', borderRadius: 6, marginBottom: 20 }}>Назад к списку</button>
+            <button onClick={() => setSelectedTrip(null)} style={{ padding: '8px 16px', background: '#6c757d', color: '#fff', border: 'none', borderRadius: 6, marginBottom: 20 }}>Назад</button>
             <h2>{selectedTrip.name}</h2>
             <div style={{ background: 'rgba(255,255,255,0.1)', padding: 24, borderRadius: 12 }}>
               <p><strong>Описание:</strong> {selectedTrip.description || '—'}</p>
@@ -266,7 +307,6 @@ function App() {
             </div>
           </div>
         ) : (
-          /* Список поездок */
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2>Мои путешествия</h2>
@@ -284,7 +324,9 @@ function App() {
                   return (
                     <div key={trip.id} style={{ background: 'rgba(255,255,255,0.1)', padding: 20, borderRadius: 12, position: 'relative', backdropFilter: 'blur(5px)' }}>
                       {isAdmin && (
-                        <button onClick={() => handleDeleteTrip(trip.id, trip.name)} style={{ position: 'absolute', top: 12, right: 12, background: '#dc3545', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>Удалить</button>
+                        <div style={{ position: 'absolute', top: 12, right: 12 }}>
+                          <button onClick={() => handleDeleteTrip(trip.id, trip.name)} style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 6, fontSize: 12, marginRight: 8 }}>Удалить</button>
+                        </div>
                       )}
                       <h3 style={{ margin: '0 0 8px', fontSize: 20 }}>{trip.name}</h3>
                       <p style={{ margin: '4px 0', color: '#ddd' }}>{trip.description || 'Без описания'}</p>
@@ -294,6 +336,26 @@ function App() {
                         <div><strong>Бюджет:</strong> {formatBudget(trip.budget)}</div>
                         <div><strong>Участники:</strong> {trip.members.length}</div>
                       </div>
+
+                      {/* ПРИГЛАШЕНИЕ */}
+                      {isAdmin && (
+                        <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+                          <input
+                            type="email"
+                            placeholder="Email участника"
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            style={{ flex: 1, padding: 10, borderRadius: 6, border: '1px solid #555', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+                          />
+                          <button
+                            onClick={() => handleInvite(trip.id)}
+                            style={{ padding: '10px 16px', background: '#007bff', color: '#fff', border: 'none', borderRadius: 6 }}
+                          >
+                            Пригласить
+                          </button>
+                        </div>
+                      )}
+
                       <button onClick={() => setSelectedTrip(trip)} style={{ marginTop: 16, padding: '10px 20px', background: '#007bff', color: '#fff', border: 'none', borderRadius: 8 }}>Открыть</button>
                     </div>
                   );
