@@ -38,7 +38,7 @@ function App() {
     }
   };
 
-  // === СОЗДАНИЕ ПОЕЗДКИ ===
+  // === СОЗДАНИЕ ===
   const handleCreateTrip = async (e) => {
     e.preventDefault();
     try {
@@ -51,14 +51,14 @@ function App() {
     }
   };
 
-  // === ПРИГЛАШЕНИЯ ===
+  // === ПРИГЛАШЕНИЕ ===
   const handleInvite = async (tripId) => {
     const emails = inviteEmails.split(',').map(e => e.trim()).filter(Boolean);
     if (!emails.length) return;
     try {
-      await sendInvites(tripId, emails, user.id);
+      const sent = await sendInvites(tripId, emails, user.id);
       setInviteEmails('');
-      setMessage(`Приглашения отправлены: ${emails.join(', ')}`);
+      setMessage(sent ? `Приглашены: ${sent.join(', ')}` : 'Никого не пригласили');
     } catch (err) {
       setMessage(err.message);
     }
@@ -163,7 +163,7 @@ function App() {
           <p><strong>Куда:</strong> {selectedTrip.destination}</p>
           <p><strong>Даты:</strong> {formatDate(selectedTrip.startDate)} — {formatDate(selectedTrip.endDate)}</p>
           <p><strong>Бюджет:</strong> {formatBudget(selectedTrip.budget)}</p>
-          <p><strong>Участники:</strong> {selectedTrip.members?.map(m => m.username).join(', ')}</p>
+          <p><strong>Участники:</strong> {selectedTrip.members?.map(m => m.username).join(', ') || '—'}</p>
         </div>
       ) : (
         <div>
@@ -173,7 +173,8 @@ function App() {
           ) : (
             <div className="trips">
               {data.trips.map(trip => {
-                const isAdmin = trip.members?.some(m => m.userId === user.id && m.role === 'admin');
+                const members = Array.isArray(trip.members) ? trip.members : [];
+                const isAdmin = members.some(m => m.userId === user.id && m.role === 'admin');
                 return (
                   <div key={trip.id} className="trip-card">
                     {isAdmin && (
@@ -186,7 +187,7 @@ function App() {
                       <span>{formatBudget(trip.budget)}</span>
                     </div>
                     <div className="members">
-                      Участники: {trip.members?.map(m => m.username).join(', ')}
+                      Участники: {members.map(m => m.username).join(', ')}
                     </div>
                     {isAdmin && (
                       <div className="invite">
