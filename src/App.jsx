@@ -10,7 +10,8 @@ import {
   subscribeToInvitations,
   unsubscribeFromInvitations,
   subscribeToTrips,
-  unsubscribeFromTrips
+  unsubscribeFromTrips,
+  migrateOldUserData
 } from './services/firebaseApi';
 import './App.css';
 
@@ -28,9 +29,9 @@ function App() {
   const [showTripForm, setShowTripForm] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [loadingData, setLoadingData] = useState(true); // НОВОЕ!
+  const [loadingData, setLoadingData] = useState(true);
 
-  // === АВТОРИЗАЦИЯ ===
+  // === АВТОРИЗАЦИЯ + МИГРАЦИЯ ===
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -40,9 +41,19 @@ function App() {
         ? await login(formData.email, formData.password)
         : await register(formData.username, formData.email, formData.password);
 
-      setUser(res.user);
+      const userData = res.user;
+      setUser(userData);
       setMessage(isLogin ? 'Вход успешен!' : 'Регистрация успешна!');
       setFormData({ username: '', email: '', password: '' });
+
+      // МИГРАЦИЯ ДЛЯ СТАРЫХ АККАУНТОВ
+      if (isLogin) {
+        try {
+          await migrateOldUserData(userData);
+        } catch (err) {
+          console.warn('Миграция не удалась:', err);
+        }
+      }
     } catch (error) {
       setMessage('Ошибка: ' + error.message);
     } finally {
@@ -62,7 +73,7 @@ function App() {
     }
   };
 
-  // === ПРИНЯТИЕ ПРИГЛАШЕНИЯ ===
+  // === ПРИНЯТИЕ ===
   const handleAcceptInvite = async (tripId) => {
     if (!user) return;
     try {
@@ -73,7 +84,7 @@ function App() {
     }
   };
 
-  // === СОЗДАНИЕ ПОЕЗДКИ ===
+  // === СОЗДАНИЕ ===
   const handleTripSubmit = async (e) => {
     if (!user) return;
     e.preventDefault();
@@ -151,7 +162,7 @@ function App() {
   const formatDate = (d) => new Date(d).toLocaleDateString('ru-RU');
   const formatBudget = (b) => new Intl.NumberFormat('ru-RU').format(b) + ' ₽';
 
-  // === РЕАЛТАЙМ ПОДПИСКИ + ЗАЩИТА ОТ БЕЛОГО ЭКРАНА ===
+  // === РЕАЛТАЙМ + ЗАЩИТА ОТ БЕЛОГО ЭКРАНА ===
   useEffect(() => {
     if (!user) {
       setLoadingData(false);
@@ -264,7 +275,6 @@ function App() {
           </div>
         </div>
 
-        {/* ПРИГЛАШЕНИЯ */}
         {pendingInvites.length > 0 && (
           <div style={{ background: '#fff3cd', color: '#856404', padding: 16, borderRadius: 8, marginBottom: 20 }}>
             <strong>Новые приглашения ({pendingInvites.length})</strong>
@@ -282,14 +292,12 @@ function App() {
           </div>
         )}
 
-        {/* СООБЩЕНИЯ */}
         {message && (
           <div style={{ padding: 12, marginBottom: 20, background: message.includes('Ошибка') ? 'rgba(220,53,69,0.3)' : 'rgba(40,167,69,0.3)', borderRadius: 8, textAlign: 'center' }}>
             {message}
           </div>
         )}
 
-        {/* ФОРМА / ДЕТАЛИ / СПИСОК */}
         {showTripForm ? (
           <div style={{ background: 'rgba(255,255,255,0.1)', padding: 28, borderRadius: 12, backdropFilter: 'blur(10px)' }}>
             <h3>Новое путешествие</h3>
@@ -317,7 +325,7 @@ function App() {
               <p><strong>Куда:</strong> {selectedTrip.destination}</p>
               <p><strong>Даты:</strong> {formatDate(selectedTrip.startDate)} — {formatDate(selectedTrip.endDate)}</p>
               <p><strong>Бюджет:</strong> {formatBudget(selectedTrip.budget)}</p>
-              <p><strong>Участники:</strong> {selectedTrip.members?.map(m => `${m.username} (${m.role === 'admin' ? 'Админ' : 'Участник'})`).join(', ') || '—'}</p>
+              <p><strong>Участники:</strong> {(selectedTrip.members || []).map(m => `${m.username} (${m.role === 'admin' ? 'Админ' : 'Участник'})`).join(', ') || '—'}</p>
             </div>
           </div>
         ) : (
@@ -339,7 +347,8 @@ function App() {
             ) : (
               <div style={{ display: 'grid', gap: 20 }}>
                 {trips.map(trip => {
-                  const isAdmin = trip.members?.some(m => m.userId === user.id && m.role === 'admin') || false;
+                  const members = Array.isArray(trip.members) ? trip.members : [];
+                  const isAdmin = members.some(m => m.userId === user.id && m.role === 'admin');
                   return (
                     <div key={trip.id} style={{ background: 'rgba(255,255,255,0.1)', padding: 20, borderRadius: 12, position: 'relative', backdropFilter: 'blur(5px)' }}>
                       {isAdmin && (
@@ -353,7 +362,7 @@ function App() {
                         <div><strong>Куда:</strong> {trip.destination}</div>
                         <div><strong>Даты:</strong> {formatDate(trip.startDate)} — {formatDate(trip.endDate)}</div>
                         <div><strong>Бюджет:</strong> {formatBudget(trip.budget)}</div>
-                        <div><strong>Участники:</strong> {trip.members?.length || 0}</div>
+                        <div><strong>Участники:</strong> {members.length}</div>
                       </div>
 
                       {isAdmin && (

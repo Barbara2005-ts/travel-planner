@@ -36,6 +36,45 @@ export const login = async (email, password) => {
   return { user: { id: user.id, username: user.username, email } };
 };
 
+// === МИГРАЦИЯ СТАРЫХ ДАННЫХ ===
+export const migrateOldUserData = async (user) => {
+  const tripsRef = ref(db, 'trips');
+  const snapshot = await get(tripsRef);
+  const trips = snapshot.val() || {};
+
+  let updated = false;
+
+  for (const [tripId, trip] of Object.entries(trips)) {
+    if (!trip) continue;
+
+    // Добавляем id, если его нет
+    if (!trip.id) {
+      await set(ref(db, `trips/${tripId}/id`), tripId);
+      updated = true;
+    }
+
+    // Создаём members из createdBy
+    if (!trip.members && trip.createdBy) {
+      const adminUsername = trip.username || 'Админ';
+      await set(ref(db, `trips/${tripId}/members`), [
+        { userId: trip.createdBy, username: adminUsername, role: 'admin' }
+      ]);
+      updated = true;
+    }
+
+    // invitations: объект → массив
+    if (trip.invitations && typeof trip.invitations === 'object' && !Array.isArray(trip.invitations)) {
+      const invitesArray = Object.values(trip.invitations);
+      await set(ref(db, `trips/${tripId}/invitations`), invitesArray);
+      updated = true;
+    }
+  }
+
+  if (updated) {
+    console.log('Миграция завершена для пользователя:', user.id);
+  }
+};
+
 // === РЕАЛТАЙМ ПРИГЛАШЕНИЯ ===
 let invitesListener = null;
 
@@ -48,17 +87,21 @@ export const subscribeToInvitations = (userId, callback) => {
     const invitations = [];
 
     Object.entries(trips).forEach(([tripId, trip]) => {
-      if (trip.invitations) {
-        Object.values(trip.invitations).forEach(inv => {
-          if (inv.userId === userId && inv.status === 'pending') {
-            invitations.push({
-              tripId,
-              tripName: trip.name,
-              inviter: Object.values(trip.members).find(m => m.role === 'admin')?.username || 'Админ'
-            });
-          }
-        });
-      }
+      if (!trip || !trip.invitations) return;
+
+      const invites = Array.isArray(trip.invitations) ? trip.invitations : Object.values(trip.invitations || {});
+
+      invites.forEach(inv => {
+        if (inv && inv.userId === userId && inv.status === 'pending') {
+          const members = Array.isArray(trip.members) ? trip.members : [];
+          const admin = members.find(m => m && m.role === 'admin');
+          invitations.push({
+            tripId,
+            tripName: trip.name || 'Без названия',
+            inviter: admin?.username || 'Админ'
+          });
+        }
+      });
     });
 
     callback(invitations);
@@ -84,9 +127,28 @@ export const subscribeToTrips = (userId, callback) => {
   const tripsRef = ref(db, 'trips');
   const unsubscribe = onValue(tripsRef, (snapshot) => {
     const trips = snapshot.val() || {};
-    const userTrips = Object.values(trips).filter(t =>
-      t.createdBy === userId || (t.members && Object.values(t.members).some(m => m.userId === userId))
-    );
+    const userTrips = [];
+
+    Object.entries(trips).forEach(([tripId, trip]) => {
+      if (!trip || !trip.createdBy) return;
+
+      // Добавляем id, если нет
+      const tripWithId = { id: tripId, ...trip };
+
+      // Я создатель?
+      if (trip.createdBy === userId) {
+        userTrips.push(tripWithId);
+        return;
+      }
+
+      // Я в участниках?
+      const members = Array.isArray(trip.members) ? trip.members : [];
+      const isMember = members.some(m => m && m.userId === userId);
+      if (isMember) {
+        userTrips.push(tripWithId);
+      }
+    });
+
     callback(userTrips);
   });
 
@@ -119,7 +181,8 @@ export const deleteTrip = async (tripId, userId) => {
   const tripRef = ref(db, `trips/${tripId}`);
   const snapshot = await get(tripRef);
   const trip = snapshot.val();
-  if (!trip || !Object.values(trip.members).some(m => m.userId === userId && m.role === 'admin')) {
+  const members = Array.isArray(trip?.members) ? trip.members : [];
+  if (!trip || !members.some(m => m.userId === userId && m.role === 'admin')) {
     throw new Error('Нет прав');
   }
   await remove(tripRef);
@@ -138,7 +201,8 @@ export const sendInvitation = async (tripId, email, inviterId) => {
   const tripRef = ref(db, `trips/${tripId}`);
   const tripSnap = await get(tripRef);
   const trip = tripSnap.val();
-  if (trip.members && Object.values(trip.members).some(m => m.userId === targetUser.id)) {
+  const members = Array.isArray(trip?.members) ? trip.members : [];
+  if (members.some(m => m.userId === targetUser.id)) {
     throw new Error('Уже в поездке');
   }
 
@@ -160,11 +224,16 @@ export const acceptInvitation = async (tripId, userId) => {
   const trip = snapshot.val();
   if (!trip || !trip.invitations) throw new Error('Приглашение не найдено');
 
-  const invitation = Object.values(trip.invitations).find(i => i.userId === userId && i.status === 'pending');
+  const invites = Array.isArray(trip.invitations) ? trip.invitations : Object.values(trip.invitations || {});
+  const invitation = invites.find(i => i.userId === userId && i.status === 'pending');
   if (!invitation) throw new Error('Нет активного приглашения');
 
-  const inviteKey = Object.keys(trip.invitations).find(key => trip.invitations[key].userId === userId);
-  await remove(ref(db, `trips/${tripId}/invitations/${inviteKey}`));
+  const inviteKey = Object.keys(trip.invitations || {}).find(key => 
+    trip.invitations[key].userId === userId
+  );
+  if (inviteKey) {
+    await remove(ref(db, `trips/${tripId}/invitations/${inviteKey}`));
+  }
 
   const memberRef = push(ref(db, `trips/${tripId}/members`));
   await set(memberRef, {
