@@ -1,26 +1,47 @@
 /* src/App.css */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
 
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #0f3460;
-  color: #fff;
-}
+.auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #1e293b; }
+.auth-card { width: 380px; padding: 32px; background: rgba(30,41,59,0.9); border-radius: 16px; text-align: center; backdrop-filter: blur(10px); }
+.auth-card h1 { font-size: 28px; margin-bottom: 8px; color: #60a5fa; }
+.auth-card h2 { margin-bottom: 20px; color: #94a3b8; }
+.auth-card input { width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #475569; background: rgba(255,255,255,0.1); color: #fff; }
+.auth-card button { width: 100%; padding: 14px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-weight: bold; margin-bottom: 12px; }
+.link { background: none; border: none; color: #60a5fa; text-decoration: underline; cursor: pointer; }
 
-input, textarea, button {
-  font-family: inherit;
-}
+.app { padding: 32px; max-width: 1000px; margin: 0 auto; }
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+header h1 { font-size: 28px; color: #60a5fa; }
+.user span { font-weight: bold; color: #94a3b8; }
+.logout { background: #ef4444; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; margin-left: 12px; }
 
-button {
-  cursor: pointer;
-  transition: 0.2s;
-}
+.invites, .card { background: rgba(30,41,59,0.8); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+.invites h3 { margin-bottom: 12px; color: #60a5fa; }
+.invite-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 8px; }
 
-button:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
+.msg { padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center; }
+.success { background: #22c55e; color: #fff; }
+.error { background: #ef4444; color: #fff; }
+
+.add-trip { padding: 12px 24px; background: #22c55e; color: #fff; border: none; border-radius: 8px; font-weight: bold; margin-bottom: 20px; }
+
+.trips { display: grid; gap: 16px; }
+.trip-card { position: relative; background: rgba(30,41,59,0.8); padding: 20px; border-radius: 12px; }
+.delete { position: absolute; top: 12px; right: 12px; background: #ef4444; color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-size: 12px; }
+.trip-card h3 { margin-bottom: 8px; color: #60a5fa; }
+.info { display: flex; justify-content: space-between; font-size: 14px; color: #94a3b8; margin: 12px 0; }
+.members { font-size: 13px; color: #cbd5e1; margin-bottom: 12px; }
+.invite { display: flex; gap: 8px; margin-bottom: 12px; }
+.invite input { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #475569; background: rgba(255,255,255,0.1); color: #fff; }
+.open { width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-weight: bold; }
+
+.dates { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+.btns { display: flex; gap: 12px; }
+.btns button { flex: 1; padding: 12px; border-radius: 8px; }
+.btns button:first-child { background: #22c55e; color: #fff; border: none; }
+.btns button:last-child { background: #6b7280; color: #fff; border: none; }
+
+.back { background: #6b7280; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; margin-bottom: 16px; }
+
+.empty { text-align: center; color: #94a3b8; font-size: 18px; padding: 40px; }

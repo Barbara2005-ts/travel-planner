@@ -1,147 +1,111 @@
 // src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { 
-  register, 
-  login, 
-  addTask, 
-  toggleTask, 
-  deleteTask,
-  subscribeToTasks,
-  unsubscribeFromTasks
+  register, login, createTrip, deleteTrip, 
+  sendInvites, acceptInvite, subscribeToData, unsubscribe 
 } from './services/firebaseApi';
 import './App.css';
 
 function App() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({ username: '', email: '', password: '' });
-  const [taskText, setTaskText] = useState('');
-  const [message, setMessage] = useState('');
   const [user, setUser] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
+  const [form, setForm] = useState({ username: '', email: '' });
+  const [tripForm, setTripForm] = useState({ name: '', destination: '', startDate: '', endDate: '', budget: '' });
+  const [inviteEmails, setInviteEmails] = useState('');
+  const [data, setData] = useState({ trips: [], invites: [] });
+  const [message, setMessage] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState(null);
 
   // === АВТОВХОД ===
   useEffect(() => {
-    const saved = localStorage.getItem('todoUser');
+    const saved = localStorage.getItem('tripUser');
     if (saved) setUser(JSON.parse(saved));
   }, []);
 
   // === АВТОРИЗАЦИЯ ===
   const handleAuth = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setLoading(true);
     try {
-      const res = isLogin
-        ? await login(formData.email, formData.password)
-        : await register(formData.username, formData.email, formData.password);
-
-      const userData = res.user;
+      const res = isLogin ? await login(form.email) : await register(form.username, form.email);
+      const userData = res;
       setUser(userData);
-      localStorage.setItem('todoUser', JSON.stringify(userData));
+      localStorage.setItem('tripUser', JSON.stringify(userData));
+      setForm({ username: '', email: '' });
       setMessage(isLogin ? 'Вошли!' : 'Зарегистрированы!');
-      setFormData({ username: '', email: '', password: '' });
     } catch (err) {
-      setMessage('Ошибка: ' + err.message);
-    } finally {
-      setLoading(false);
+      setMessage(err.message);
     }
   };
 
-  // === ДОБАВИТЬ ЗАДАЧУ ===
-  const handleAddTask = async (e) => {
+  // === СОЗДАНИЕ ПОЕЗДКИ ===
+  const handleCreateTrip = async (e) => {
     e.preventDefault();
-    if (!taskText.trim()) return;
     try {
-      await addTask(user.id, taskText);
-      setTaskText('');
-      setMessage('Задача добавлена!');
+      await createTrip(user.id, user.username, tripForm);
+      setTripForm({ name: '', destination: '', startDate: '', endDate: '', budget: '' });
+      setShowForm(false);
+      setMessage('Поездка создана!');
     } catch (err) {
-      setMessage('Ошибка');
+      setMessage(err.message);
     }
   };
 
-  // === РЕАЛТАЙМ ЗАДАЧИ ===
+  // === ПРИГЛАШЕНИЯ ===
+  const handleInvite = async (tripId) => {
+    const emails = inviteEmails.split(',').map(e => e.trim()).filter(Boolean);
+    if (!emails.length) return;
+    try {
+      await sendInvites(tripId, emails, user.id);
+      setInviteEmails('');
+      setMessage(`Приглашения отправлены: ${emails.join(', ')}`);
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+
+  // === РЕАЛТАЙМ ===
   useEffect(() => {
     if (!user) {
-      setTasks([]);
+      setData({ trips: [], invites: [] });
       return;
     }
-
-    const unsubscribe = subscribeToTasks(user.id, setTasks);
-    return () => unsubscribeFromTasks();
+    const unsub = subscribeToData(user.id, setData);
+    return () => unsub();
   }, [user]);
 
   // === СООБЩЕНИЯ ===
   useEffect(() => {
-    if (message) {
-      const t = setTimeout(() => setMessage(''), 3000);
-      return () => clearTimeout(t);
-    }
+    if (message) setTimeout(() => setMessage(''), 3000);
   }, [message]);
 
   // === ВЫХОД ===
-  const handleLogout = () => {
+  const logout = () => {
     setUser(null);
-    localStorage.removeItem('todoUser');
-    setMessage('Вышли');
+    localStorage.removeItem('tripUser');
+    unsubscribe();
   };
+
+  const formatDate = d => new Date(d).toLocaleDateString('ru');
+  const formatBudget = b => new Intl.NumberFormat('ru').format(b) + ' ₽';
 
   // === ЭКРАН АВТОРИЗАЦИИ ===
   if (!user) {
     return (
-      <div className="App" style={{ minHeight: '100vh', background: '#1a1a2e', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 360, background: 'rgba(255,255,255,0.1)', padding: 32, borderRadius: 16, backdropFilter: 'blur(10px)' }}>
-          <h1 style={{ textAlign: 'center', marginBottom: 24 }}>To-Do List</h1>
-          <h2 style={{ textAlign: 'center', marginBottom: 20 }}>{isLogin ? 'Вход' : 'Регистрация'}</h2>
-
-          {message && (
-            <div style={{ padding: 12, marginBottom: 16, background: message.includes('Ошибка') ? '#dc3545' : '#28a745', color: '#fff', borderRadius: 8, textAlign: 'center' }}>
-              {message}
-            </div>
-          )}
-
+      <div className="auth-screen">
+        <div className="auth-card">
+          <h1>TripTogether</h1>
+          <h2>{isLogin ? 'Вход' : 'Регистрация'}</h2>
+          {message && <div className={`msg ${message.includes('ошибка') ? 'error' : 'success'}`}>{message}</div>}
           <form onSubmit={handleAuth}>
             {!isLogin && (
-              <input
-                type="text"
-                placeholder="Имя"
-                value={formData.username}
-                onChange={e => setFormData({ ...formData, username: e.target.value })}
-                required
-                style={{ width: '100%', padding: 14, marginBottom: 16, borderRadius: 8, border: '1px solid #555', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
-              />
+              <input placeholder="Имя" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} required />
             )}
-            <input
-              type="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={e => setFormData({ ...formData, email: e.target.value })}
-              required
-              style={{ width: '100%', padding: 14, marginBottom: 16, borderRadius: 8, border: '1px solid #555', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
-            />
-            <input
-              type="password"
-              placeholder="Пароль"
-              value={formData.password}
-              onChange={e => setFormData({ ...formData, password: e.target.value })}
-              required
-              style={{ width: '100%', padding: 14, marginBottom: 20, borderRadius: 8, border: '1px solid #555', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              style={{ width: '100%', padding: 14, background: '#007bff', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 'bold' }}
-            >
-              {loading ? 'Загрузка...' : (isLogin ? 'Войти' : 'Зарегистрироваться')}
-            </button>
+            <input type="email" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+            <button type="submit">{isLogin ? 'Войти' : 'Зарегистрироваться'}</button>
           </form>
-
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            style={{ marginTop: 16, background: 'none', border: 'none', color: '#4da6ff', textDecoration: 'underline', cursor: 'pointer', width: '100%' }}
-          >
-            {isLogin ? 'Нет аккаунта? Регистрация' : 'Есть аккаунт? Вход'}
+          <button className="link" onClick={() => setIsLogin(!isLogin)}>
+            {isLogin ? 'Нет аккаунта? Регистрация' : 'Уже есть? Вход'}
           </button>
         </div>
       </div>
@@ -150,72 +114,98 @@ function App() {
 
   // === ОСНОВНОЙ ЭКРАН ===
   return (
-    <div className="App" style={{ minHeight: '100vh', background: '#16213e', color: '#fff', padding: 32 }}>
-      <div style={{ maxWidth: 600, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-          <h1>Мои задачи</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span>Привет, <strong>{user.username}</strong>!</span>
-            <button onClick={handleLogout} style={{ padding: '8px 16px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: 6 }}>Выйти</button>
-          </div>
+    <div className="app">
+      <header>
+        <h1>Мои поездки</h1>
+        <div className="user">
+          <span>{user.username}</span>
+          <button onClick={logout} className="logout">Выйти</button>
         </div>
+      </header>
 
-        {message && (
-          <div style={{ padding: 12, marginBottom: 20, background: '#28a745', color: '#fff', borderRadius: 8, textAlign: 'center' }}>
-            {message}
-          </div>
-        )}
+      {data.invites.length > 0 && (
+        <div className="invites">
+          <h3>Приглашения</h3>
+          {data.invites.map(inv => (
+            <div key={inv.tripId} className="invite-item">
+              <span><strong>{inv.inviter}</strong> → "{inv.tripName}"</span>
+              <button onClick={() => acceptInvite(inv.tripId, user.id).then(() => setMessage('Присоединились!'))}>
+                Принять
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
-        <form onSubmit={handleAddTask} style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
-          <input
-            type="text"
-            placeholder="Новая задача..."
-            value={taskText}
-            onChange={e => setTaskText(e.target.value)}
-            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1px solid #555', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
-          />
-          <button type="submit" style={{ padding: '14px 24px', background: '#28a745', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 'bold' }}>
-            Добавить
-          </button>
-        </form>
+      {message && <div className={`msg ${message.includes('ошибка') ? 'error' : 'success'}`}>{message}</div>}
 
+      {showForm ? (
+        <div className="card">
+          <h3>Новая поездка</h3>
+          <form onSubmit={handleCreateTrip}>
+            <input placeholder="Название" value={tripForm.name} onChange={e => setTripForm({ ...tripForm, name: e.target.value })} required />
+            <input placeholder="Куда" value={tripForm.destination} onChange={e => setTripForm({ ...tripForm, destination: e.target.value })} required />
+            <div className="dates">
+              <input type="date" value={tripForm.startDate} onChange={e => setTripForm({ ...tripForm, startDate: e.target.value })} required />
+              <input type="date" value={tripForm.endDate} onChange={e => setTripForm({ ...tripForm, endDate: e.target.value })} required />
+            </div>
+            <input type="number" placeholder="Бюджет (₽)" value={tripForm.budget} onChange={e => setTripForm({ ...tripForm, budget: e.target.value })} />
+            <div className="btns">
+              <button type="submit">Создать</button>
+              <button type="button" onClick={() => setShowForm(false)}>Отмена</button>
+            </div>
+          </form>
+        </div>
+      ) : selectedTrip ? (
+        <div className="card">
+          <button onClick={() => setSelectedTrip(null)} className="back">Назад</button>
+          <h2>{selectedTrip.name}</h2>
+          <p><strong>Куда:</strong> {selectedTrip.destination}</p>
+          <p><strong>Даты:</strong> {formatDate(selectedTrip.startDate)} — {formatDate(selectedTrip.endDate)}</p>
+          <p><strong>Бюджет:</strong> {formatBudget(selectedTrip.budget)}</p>
+          <p><strong>Участники:</strong> {selectedTrip.members?.map(m => m.username).join(', ')}</p>
+        </div>
+      ) : (
         <div>
-          {tasks.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#aaa', fontSize: 18 }}>Пока нет задач. Добавьте первую!</p>
+          <button onClick={() => setShowForm(true)} className="add-trip">+ Новая поездка</button>
+          {data.trips.length === 0 ? (
+            <p className="empty">Нет поездок. Создайте первую!</p>
           ) : (
-            tasks.map(task => (
-              <div
-                key={task.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 16,
-                  background: 'rgba(255,255,255,0.1)',
-                  borderRadius: 8,
-                  marginBottom: 12,
-                  textDecoration: task.completed ? 'line-through' : 'none',
-                  opacity: task.completed ? 0.6 : 1
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={task.completed}
-                  onChange={() => toggleTask(user.id, task.id, task.completed)}
-                  style={{ width: 20, height: 20, cursor: 'pointer' }}
-                />
-                <span style={{ flex: 1 }}>{task.text}</span>
-                <button
-                  onClick={() => deleteTask(user.id, task.id)}
-                  style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}
-                >
-                  Удалить
-                </button>
-              </div>
-            ))
+            <div className="trips">
+              {data.trips.map(trip => {
+                const isAdmin = trip.members?.some(m => m.userId === user.id && m.role === 'admin');
+                return (
+                  <div key={trip.id} className="trip-card">
+                    {isAdmin && (
+                      <button onClick={() => deleteTrip(trip.id, user.id)} className="delete">Удалить</button>
+                    )}
+                    <h3>{trip.name}</h3>
+                    <p>{trip.destination}</p>
+                    <div className="info">
+                      <span>{formatDate(trip.startDate)} — {formatDate(trip.endDate)}</span>
+                      <span>{formatBudget(trip.budget)}</span>
+                    </div>
+                    <div className="members">
+                      Участники: {trip.members?.map(m => m.username).join(', ')}
+                    </div>
+                    {isAdmin && (
+                      <div className="invite">
+                        <input
+                          placeholder="email1, email2"
+                          value={inviteEmails}
+                          onChange={e => setInviteEmails(e.target.value)}
+                        />
+                        <button onClick={() => handleInvite(trip.id)}>Пригласить</button>
+                      </div>
+                    )}
+                    <button onClick={() => setSelectedTrip(trip)} className="open">Открыть</button>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
