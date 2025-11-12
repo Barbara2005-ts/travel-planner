@@ -187,12 +187,13 @@ export const deleteTrip = async (tripId, userId) => {
 };
 
 // === ПРИГЛАШЕНИЕ ===
+// ИСПРАВЛЕНО: if (!)targetUser → if (!targetUser)
 export const sendInvitation = async (tripId, email, inviterId) => {
   const usersRef = ref(db, 'users');
   const snapshot = await get(usersRef);
   const users = snapshot.val() || {};
   const targetUser = Object.values(users).find(u => u.email === email);
-  if (!)targetUser) throw new Error('Пользователь не найден');
+  if (!targetUser) throw new Error('Пользователь не найден'); // ИСПРАВЛЕНО
   if (targetUser.id === inviterId) throw new Error('Нельзя пригласить себя');
 
   const tripRef = ref(db, `trips/${tripId}`);
