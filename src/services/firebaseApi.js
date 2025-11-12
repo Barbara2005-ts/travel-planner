@@ -47,13 +47,13 @@ export const migrateOldUserData = async (user) => {
   for (const [tripId, trip] of Object.entries(trips)) {
     if (!trip) continue;
 
-    // Добавляем id, если его нет
+    // Добавляем id
     if (!trip.id) {
       await set(ref(db, `trips/${tripId}/id`), tripId);
       updated = true;
     }
 
-    // Создаём members из createdBy
+    // Создаём members
     if (!trip.members && trip.createdBy) {
       const adminUsername = trip.username || 'Админ';
       await set(ref(db, `trips/${tripId}/members`), [
@@ -132,16 +132,13 @@ export const subscribeToTrips = (userId, callback) => {
     Object.entries(trips).forEach(([tripId, trip]) => {
       if (!trip || !trip.createdBy) return;
 
-      // Добавляем id, если нет
       const tripWithId = { id: tripId, ...trip };
 
-      // Я создатель?
       if (trip.createdBy === userId) {
         userTrips.push(tripWithId);
         return;
       }
 
-      // Я в участниках?
       const members = Array.isArray(trip.members) ? trip.members : [];
       const isMember = members.some(m => m && m.userId === userId);
       if (isMember) {
@@ -195,7 +192,7 @@ export const sendInvitation = async (tripId, email, inviterId) => {
   const snapshot = await get(usersRef);
   const users = snapshot.val() || {};
   const targetUser = Object.values(users).find(u => u.email === email);
-  if (!targetUser) throw new Error('Пользователь не найден');
+  if (!)targetUser) throw new Error('Пользователь не найден');
   if (targetUser.id === inviterId) throw new Error('Нельзя пригласить себя');
 
   const tripRef = ref(db, `trips/${tripId}`);

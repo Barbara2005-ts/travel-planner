@@ -46,7 +46,6 @@ function App() {
       setMessage(isLogin ? 'Вход успешен!' : 'Регистрация успешна!');
       setFormData({ username: '', email: '', password: '' });
 
-      // МИГРАЦИЯ ДЛЯ СТАРЫХ АККАУНТОВ
       if (isLogin) {
         try {
           await migrateOldUserData(userData);
@@ -162,7 +161,7 @@ function App() {
   const formatDate = (d) => new Date(d).toLocaleDateString('ru-RU');
   const formatBudget = (b) => new Intl.NumberFormat('ru-RU').format(b) + ' ₽';
 
-  // === РЕАЛТАЙМ + ЗАЩИТА ОТ БЕЛОГО ЭКРАНА ===
+  // === РЕАЛТАЙМ + ЗАЩИТА ===
   useEffect(() => {
     if (!user) {
       setLoadingData(false);
@@ -325,7 +324,10 @@ function App() {
               <p><strong>Куда:</strong> {selectedTrip.destination}</p>
               <p><strong>Даты:</strong> {formatDate(selectedTrip.startDate)} — {formatDate(selectedTrip.endDate)}</p>
               <p><strong>Бюджет:</strong> {formatBudget(selectedTrip.budget)}</p>
-              <p><strong>Участники:</strong> {(selectedTrip.members || []).map(m => `${m.username} (${m.role === 'admin' ? 'Админ' : 'Участник'})`).join(', ') || '—'}</p>
+              <p><strong>Участники:</strong> {Array.isArray(selectedTrip.members) 
+                ? selectedTrip.members.map(m => `${m.username} (${m.role === 'admin' ? 'Админ' : 'Участник'})`).join(', ')
+                : '—'
+              }</p>
             </div>
           </div>
         ) : (
@@ -348,7 +350,7 @@ function App() {
               <div style={{ display: 'grid', gap: 20 }}>
                 {trips.map(trip => {
                   const members = Array.isArray(trip.members) ? trip.members : [];
-                  const isAdmin = members.some(m => m.userId === user.id && m.role === 'admin');
+                  const isAdmin = members.some(m => m?.userId === user.id && m?.role === 'admin');
                   return (
                     <div key={trip.id} style={{ background: 'rgba(255,255,255,0.1)', padding: 20, borderRadius: 12, position: 'relative', backdropFilter: 'blur(5px)' }}>
                       {isAdmin && (
