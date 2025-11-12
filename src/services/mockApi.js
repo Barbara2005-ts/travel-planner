@@ -74,32 +74,21 @@ export const deleteTrip = (tripId, userId) => {
 };
 
 // === ПРИГЛАШЕНИЯ ===
-export const sendInvitation = (tripId, email, inviterId) => {
-  const db = getDB();
-  const user = db.users.find(u => u.email === email);
-  if (!user) throw new Error('Пользователь не найден');
-  if (user.id === inviterId) throw new Error('Нельзя пригласить себя');
+// Пример: отправка приглашения
+export const sendInvitation = async (tripId, email) => {
+  const usersRef = ref(db, 'users');
+  const snapshot = await get(usersRef);
+  const users = snapshot.val();
+  const targetUser = Object.values(users).find(u => u.email === email);
+  
+  if (!targetUser) throw new Error('Пользователь не найден');
 
-  const trip = db.trips.find(t => t.id === tripId);
-  if (!trip) throw new Error('Поездка не найдена');
-  if (trip.members.some(m => m.userId === user.id)) {
-    throw new Error('Уже в поездке');
-  }
-
-  if (!trip.invitations) trip.invitations = [];
-  if (trip.invitations.some(i => i.userId === user.id && i.status === 'pending')) {
-    throw new Error('Приглашение уже отправлено');
-  }
-
-  trip.invitations.push({
-    userId: user.id,
-    username: user.username,
-    email: user.email,
+  const inviteRef = ref(db, `trips/${tripId}/invitations`);
+  await push(inviteRef, {
+    userId: targetUser.id,
+    email: targetUser.email,
     status: 'pending'
   });
-
-  saveDB(db);
-  return { message: `Приглашение отправлено ${email}` };
 };
 
 export const acceptInvitation = (tripId, userId) => {
