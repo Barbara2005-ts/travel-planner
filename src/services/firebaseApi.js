@@ -94,3 +94,24 @@ export const updateBudgetCategory = async (email, tripId, category, value) => {
   const key = email.replace(/[@.]/g, '_');
   await set(ref(db, `trips/${key}/${tripId}/budgetCategories/${category}`), Number(value));
 };
+
+// ... (остальное как было)
+
+// === ДОБАВИТЬ УЧАСТНИКА ===
+export const addParticipant = async (email, tripId, name, amount) => {
+  const key = email.replace(/[@.]/g, '_');
+  const participantRef = push(ref(db, `trips/${key}/${tripId}/participants`));
+  await set(participantRef, { name, amount: Number(amount) || 0 });
+};
+
+// === ОБНОВИТЬ СУММУ УЧАСТНИКА ===
+export const updateParticipant = async (email, tripId, participantId, amount) => {
+  const key = email.replace(/[@.]/g, '_');
+  await set(ref(db, `trips/${key}/${tripId}/participants/${participantId}/amount`), Number(amount));
+};
+
+// === УДАЛИТЬ УЧАСТНИКА ===
+export const removeParticipant = async (email, tripId, participantId) => {
+  const key = email.replace(/[@.]/g, '_');
+  await remove(ref(db, `trips/${key}/${tripId}/participants/${participantId}`));
+};
