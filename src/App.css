@@ -33,10 +33,6 @@ body {
   font-size: 32px; 
   margin-bottom: 12px; 
   color: #60a5fa; 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
 }
 .auth h2 { 
   margin-bottom: 24px; 
@@ -52,7 +48,6 @@ body {
   background: rgba(255,255,255,0.08);
   color: #fff;
   font-size: 16px;
-  transition: 0.2s;
 }
 .auth input:focus {
   outline: none;
@@ -70,7 +65,6 @@ body {
   margin: 12px 0;
   cursor: pointer;
   transition: 0.2s;
-  font-size: 16px;
 }
 .auth button:hover { background: #2563eb; }
 .link { 
@@ -94,9 +88,6 @@ body {
 .app h1 {
   font-size: 26px;
   color: #60a5fa;
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 .logout {
   background: #ef4444;
@@ -106,9 +97,6 @@ body {
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   transition: 0.2s;
 }
 .logout:hover { background: #dc2626; }
@@ -127,421 +115,10 @@ body {
   margin-bottom: 28px;
   cursor: pointer;
   transition: 0.3s;
-  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
 }
 .add:hover { 
   background: #16a34a; 
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
-}
-
-/* === КАРТОЧКА ПОЕЗДКИ === */
-.trips {
-  display: grid;
-  gap: 24px;
-}
-.trip {
-  background: rgba(30, 41, 59, 0.85);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-  transition: all 0.3s ease;
-  position: relative;
-}
-.trip:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 48px rgba(0,0,0,0.35);
-}
-.delete {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  background: #ef4444;
-  color: #fff;
-  border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  font-weight: bold;
-  cursor: pointer;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: 0.2s;
-}
-.delete:hover { background: #dc2626; }
-
-/* === ЗАГОЛОВОК ПОЕЗДКИ === */
-.trip-header {
-  padding: 24px;
-  cursor: pointer;
-  position: relative;
-  transition: 0.2s;
-}
-.trip-header:hover {
-  background: rgba(255,255,255,0.05);
-}
-.trip-header h3 {
-  font-size: 22px;
-  color: #60a5fa;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.trip-header p {
-  font-size: 15px;
-  color: #cbd5e1;
-  margin: 6px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.trip-header::after {
-  content: "\f078";
-  font-family: "Font Awesome 6 Free";
-  font-weight: 900;
-  position: absolute;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #94a3b8;
-  font-size: 14px;
-  transition: 0.3s;
-}
-.trip-header.open::after {
-  transform: translateY(-50%) rotate(180deg);
-}
-
-/* === ВКЛАДКИ === */
-.trip-tabs {
-  border-top: 1px solid #475569;
-  padding: 20px 24px 24px;
-}
-.tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-}
-.tabs button {
-  flex: 1;
-  min-width: 110px;
-  padding: 12px;
-  background: #1e293b;
-  color: #94a3b8;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: 0.3s;
-  font-size: 14px;
-}
-.tabs button.active {
-  background: #3b82f6;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-.tabs button:hover:not(.active) {
-  background: rgba(255,255,255,0.1);
-}
-
-/* === КОНТЕНТ ВКЛАДОК === */
-.tab-content {
-  animation: fadeIn 0.4s ease;
-  padding: 8px 0;
-}
-
-/* === ПЛАНЫ === */
-.checklist {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.check-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 10px;
-  transition: 0.2s;
-}
-.check-item:hover {
-  background: rgba(255,255,255,0.1);
-}
-.check-item input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  accent-color: #22c55e;
-  cursor: pointer;
-}
-.check-item .done {
-  text-decoration: line-through;
-  color: #94a3b8;
-  font-style: italic;
-}
-.checklist input[type="text"] {
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px dashed #475569;
-  background: transparent;
-  color: #fff;
-  font-size: 15px;
-  transition: 0.2s;
-}
-.checklist input[type="text"]:focus {
-  outline: none;
-  border-color: #60a5fa;
-  background: rgba(255,255,255,0.05);
-}
-
-/* === БЮДЖЕТ === */
-.budget-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 10px;
-  margin: 8px 0;
-}
-.budget-row span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-}
-.budget-row input {
-  width: 100px;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #475569;
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-  text-align: right;
-  font-weight: 600;
-}
-
-/* === УЧАСТНИКИ === */
-.participant {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 10px;
-  transition: 0.2s;
-}
-.participant:hover {
-  background: rgba(255,255,255,0.1);
-}
-.participant input {
-  width: 90px;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #475569;
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-  text-align: right;
-  font-weight: 600;
-}
-.remove {
-  background: #ef4444;
-  color: #fff;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: 0.2s;
-}
-.remove:hover { background: #dc2626; }
-.add-participant {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-}
-.add-participant input {
-  flex: 1;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px dashed #475569;
-  background: transparent;
-  color: #fff;
-}
-.add-participant button {
-  padding: 12px 16px;
-  background: #22c55e;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.add-participant button:hover { background: #16a34a; }
-
-/* === ПРОГРЕСС-БАРЫ === */
-.progress {
-  height: 10px;
-  background: #1e293b;
-  border-radius: 5px;
-  overflow: hidden;
-  margin: 12px 0;
-}
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #22c55e, #16a34a);
-  border-radius: 5px;
-  transition: width 0.5s ease;
-}
-
-/* === СООБЩЕНИЯ === */
-.success, .error {
-  padding: 16px;
-  border-radius: 14px;
-  text-align: center;
-  margin-bottom: 20px;
-  font-weight: 600;
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.success { 
-  background: rgba(34, 197, 94, 0.2); 
-  color: #86efac; 
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-.error { 
-  background: rgba(239, 68, 68, 0.2); 
-  color: #fca5a5; 
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-/* === ПУСТО === */
-.empty {
-  text-align: center;
-  color: #94a3b8;
-  font-size: 18px;
-  padding: 80px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-/* === ЧЕКБОКС КРАСИВЫЙ === */
-.checkbox-label {
-  position: relative;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-.checkbox-label input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.checkmark {
-  width: 20px;
-  height: 20px;
-  background: #1e293b;
-  border: 2px solid #475569;
-  border-radius: 6px;
-  transition: 0.2s;
-  margin-right: 12px;
-}
-.checkbox-label input:checked ~ .checkmark {
-  background: #22c55e;
-  border-color: #22c55e;
-}
-.checkbox-label input:checked ~ .checkmark::after {
-  content: "✓";
-  position: absolute;
-  color: white;
-  font-weight: bold;
-  font-size: 14px;
-  left: 4px;
-  top: -1px;
-}
-.check-item {
-  display: flex;
-  align-items: center;
-  padding: 10px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 10px;
-  transition: 0.2s;
-}
-.check-item:hover {
-  background: rgba(255,255,255,0.1);
-}
-.check-input {
-  margin-top: 8px;
-}
-.check-input input {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px dashed #475569;
-  background: transparent;
-  color: #fff;
-}
-
-/* === БЮДЖЕТ КАК У УЧАСТНИКОВ === */
-.budget-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.budget-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 8px;
-}
-.budget-item input {
-  width: 90px;
-  padding: 6px;
-  border-radius: 6px;
-  border: 1px solid #475569;
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-  text-align: right;
-}
-.add-budget {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-.add-budget input {
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px dashed #475569;
-  background: transparent;
-  color: #fff;
-}
-.add-budget button {
-  padding: 10px 16px;
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
 }
 
 /* === МОДАЛЬНОЕ ОКНО === */
@@ -632,46 +209,253 @@ body {
   border: none;
 }
 
-/* === ПУСТЫЕ ПОЛЯ === */
-input[type="number"] {
-  -moz-appearance: textfield;
+/* === КАРТОЧКА ПОЕЗДКИ === */
+.trips {
+  display: grid;
+  gap: 24px;
 }
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.trip {
+  background: rgba(30, 41, 59, 0.85);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  transition: all 0.3s ease;
+  position: relative;
 }
-.budget-item input,
-.participant input {
-  width: 90px;
-  text-align: right;
+.trip:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.35);
 }
-.budget-item input::placeholder,
-.participant input::placeholder {
-  color: #64748b;
-  opacity: 1;
+.delete {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.delete:hover { background: #dc2626; }
+
+/* === ЗАГОЛОВОК ПОЕЗДКИ === */
+.trip-header {
+  padding: 24px;
+  cursor: pointer;
+  position: relative;
+}
+.trip-header h3 {
+  font-size: 22px;
+  color: #60a5fa;
+  margin-bottom: 12px;
+}
+.trip-header p {
+  font-size: 15px;
+  color: #cbd5e1;
+  margin: 6px 0;
+}
+.trip-header::after {
+  content: "\f078";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 14px;
+  transition: 0.3s;
+}
+.trip-header.open::after {
+  transform: translateY(-50%) rotate(180deg);
 }
 
-/* === АНИМАЦИИ === */
-@keyframes slideUp {
-  from { transform: translateY(50px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+/* === ВКЛАДКИ === */
+.trip-tabs {
+  border-top: 1px solid #475569;
+  padding: 20px 24px 24px;
+}
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.tabs button {
+  flex: 1;
+  min-width: 110px;
+  padding: 12px;
+  background: #1e293b;
+  color: #94a3b8;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: 0.3s;
+}
+.tabs button.active {
+  background: #3b82f6;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* === ЧЕКБОКС === */
+.checkbox-label {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.checkbox-label input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.checkmark {
+  width: 20px;
+  height: 20px;
+  background: #1e293b;
+  border: 2px solid #475569;
+  border-radius: 6px;
+  transition: 0.2s;
+  margin-right: 12px;
+}
+.checkbox-label input:checked ~ .checkmark {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+.checkbox-label input:checked ~ .checkmark::after {
+  content: "✓";
+  position: absolute;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  left: 4px;
+  top: -1px;
+}
+.check-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  transition: 0.2s;
+}
+.check-item:hover {
+  background: rgba(255,255,255,0.1);
+}
+.check-input {
+  margin-top: 8px;
+}
+.check-input input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px dashed #475569;
+  background: transparent;
+  color: #fff;
+}
+
+/* === БЮДЖЕТ И УЧАСТНИКИ === */
+.budget-list, .participants {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.budget-item, .participant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+.budget-item input, .participant input {
+  width: 90px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  text-align: right;
+}
+.add-budget, .add-participant {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.add-budget input, .add-participant input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px dashed #475569;
+  background: transparent;
+  color: #fff;
+}
+.add-budget button, .add-participant button {
+  padding: 10px 16px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+}
+.remove {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* === ПРОГРЕСС === */
+.progress {
+  height: 10px;
+  background: #1e293b;
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+/* === СООБЩЕНИЯ === */
+.success, .error {
+  padding: 16px;
+  border-radius: 14px;
+  text-align: center;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+.success { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+.error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+/* === ПУСТО === */
+.empty {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 18px;
+  padding: 80px 20px;
 }
 
 /* === АНИМАЦИИ === */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-
-/* === МОБИЛЬНАЯ АДАПТАЦИЯ === */
-@media (max-width: 768px) {
-  .container { padding: 16px; }
-  .auth .card { padding: 24px; }
-  .trip-header { padding: 20px; }
-  .trip-tabs { padding: 16px 20px; }
-  .tabs { gap: 8px; }
-  .tabs button { font-size: 13px; min-width: 90px; }
-  .budget-row, .participant, .add-participant { flex-wrap: wrap; }
-  .participant input, .add-participant input { width: 100%; margin: 4px 0; }
+@keyframes slideUp {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

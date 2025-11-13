@@ -108,7 +108,7 @@ function App() {
         + Новая поездка
       </button>
 
-      {/* === КРАСИВАЯ ФОРМА СОЗДАНИЯ === */}
+      {/* === МОДАЛЬНАЯ ФОРМА === */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -166,6 +166,8 @@ function App() {
             const budgetProgress = trip.budget ? (spent / trip.budget) * 100 : 0;
 
             const participants = Object.entries(trip.participants || {}).map(([id, p]) => ({ id, ...p }));
+            const totalOwed = participants.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+            const remainingToCollect = trip.budget - totalOwed;
 
             return (
               <div key={trip.id} className="card trip">
@@ -286,7 +288,13 @@ function App() {
                       {activeTab === 'participants' && (
                         <div>
                           <h4>Список участников</h4>
-                          <p><small><strong>Всего нужно:</strong> {formatBudget(trip.budget)}</small></p>
+
+                          <p>
+                            <small>
+                              <strong>Осталось собрать:</strong> {formatBudget(remainingToCollect)}
+                            </small>
+                          </p>
+
                           <div className="participants">
                             {participants.map(p => (
                               <div key={p.id} className="participant">
@@ -311,7 +319,7 @@ function App() {
                               />
                               <input 
                                 type="number" 
-                                placeholder="Сколько должен"
+                                placeholder="Сколько скинул"
                                 value={participantAmount}
                                 onChange={e => setParticipantAmount(e.target.value)}
                               />
@@ -326,6 +334,8 @@ function App() {
                               >Добавить</button>
                             </div>
                           </div>
+
+                          <p><small>Собрано: {formatBudget(totalOwed)} из {formatBudget(trip.budget)}</small></p>
                         </div>
                       )}
                     </div>
