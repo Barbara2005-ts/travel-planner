@@ -35,12 +35,10 @@ export const login = async (email) => {
   return { id: user.id, username: user.username, email };
 };
 
-// === РЕАЛТАЙМ ПОДПИСКА (members и invitations — всегда массивы!) ===
-let listener = null;
+// === РЕАЛТАЙМ ПОДПИСКА (БЕЗ ГЛОБАЛЬНОГО listener!) ===
 export const subscribeToData = (userId, callback) => {
-  if (listener) listener();
-
   const tripsRef = ref(db, 'trips');
+
   const unsubscribe = onValue(tripsRef, (snap) => {
     const trips = snap.val() || {};
     const myTrips = [];
@@ -49,8 +47,15 @@ export const subscribeToData = (userId, callback) => {
     Object.entries(trips).forEach(([id, trip]) => {
       if (!trip) return;
 
+      // members — всегда массив
       const members = Array.isArray(trip.members) ? trip.members : [];
-      const invitations = Array.isArray(trip.invitations) ? trip.invitations : Object.values(trip.invitations || {});
+
+      // invitations — через Object.entries()
+      const rawInvites = trip.invitations || {};
+      const invitations = Object.entries(rawInvites).map(([key, value]) => ({
+        key,
+        ...value
+      }));
 
       const tripWithId = { id, ...trip, members, invitations };
 
@@ -81,7 +86,7 @@ export const subscribeToData = (userId, callback) => {
     callback({ trips: myTrips, invites });
   });
 
-  listener = unsubscribe;
+  // Возвращаем функцию отписки
   return unsubscribe;
 };
 
@@ -171,27 +176,39 @@ export const sendInvites = async (tripId, emails, inviterId) => {
 };
 
 // === ПРИНЯТИЕ ПРИГЛАШЕНИЯ ===
-export const acceptInvite = async (tripId, userId) => {
-  console.log('Принятие:', { tripId, userId });
+// === ПРИНЯТИЕ ПРИГЛАШЕНИЯ ===
+export const acceptInvite = async (tripId, userId, currentUsername) => {
+  console.log('Принятие:', { tripId, userId, currentUsername });
 
   const tripRef = ref(db, `trips/${tripId}`);
   const snap = await get(tripRef);
   const trip = snap.val();
   if (!trip) throw new Error('Поездка не найдена');
 
-  const invites = Array.isArray(trip.invitations) ? trip.invitations : Object.values(trip.invitations || {});
-  const invitation = invites.find(i => i.userId === userId && i.status === 'pending');
-  if (!invitation) throw new Error('Приглашение не найдено');
-
-  const inviteKey = Object.keys(trip.invitations || {}).find(k => 
-    trip.invitations[k].userId === userId
+  // ЧИТАЕМ ПРИГЛАШЕНИЯ ЧЕРЕЗ Object.entries()
+  const rawInvites = trip.invitations || {};
+  const inviteEntries = Object.entries(rawInvites);
+  const inviteEntry = inviteEntries.find(([key, value]) => 
+    value.userId === userId && value.status === 'pending'
   );
-  if (inviteKey) {
-    await remove(ref(db, `trips/${tripId}/invitations/${inviteKey}`));
-    console.log('Приглашение удалено');
+
+  if (!inviteEntry) {
+    console.log('Приглашение не найдено для:', userId);
+    throw new Error('Приглашение не найдено или уже принято');
   }
 
+  const [inviteKey] = inviteEntry;
+
+  // Удаляем приглашение
+  await remove(ref(db, `trips/${tripId}/invitations/${inviteKey}`));
+  console.log('Приглашение удалено:', inviteKey);
+
+  // Добавляем в участники — ТВОЙ username!
   const memberRef = push(ref(db, `trips/${tripId}/members`));
-  await set(memberRef, { userId, username: invitation.username, role: 'member' });
-  console.log('Добавлен в участники');
+  await set(memberRef, { 
+    userId, 
+    username: currentUsername, 
+    role: 'member' 
+  });
+  console.log('Добавлен в участники:', currentUsername);
 };
