@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { register, login, createTrip, deleteTrip, subscribeToTrips } from './services/firebaseApi';
+import { 
+  register, login, createTrip, deleteTrip, 
+  subscribeToTrips, addChecklistItem, toggleChecklist, 
+  updateBudgetCategory 
+} from './services/firebaseApi';
 import './App.css';
 
 function App() {
@@ -9,6 +13,8 @@ function App() {
   const [trips, setTrips] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [tripForm, setTripForm] = useState({ name: '', destination: '', startDate: '', endDate: '', budget: '' });
+  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [checklistInput, setChecklistInput] = useState('');
   const [message, setMessage] = useState('');
 
   // Автовход
@@ -99,7 +105,7 @@ function App() {
               <input type="date" value={tripForm.startDate} onChange={e => setTripForm({ ...tripForm, startDate: e.target.value })} required />
               <input type="date" value={tripForm.endDate} onChange={e => setTripForm({ ...tripForm, endDate: e.target.value })} required />
             </div>
-            <input type="number" placeholder="Бюджет ₽" value={tripForm.budget} onChange={e => setTripForm({ ...tripForm, budget: e.target.value })} />
+            <input type="number" placeholder="Общий бюджет ₽" value={tripForm.budget} onChange={e => setTripForm({ ...tripForm, budget: e.target.value })} required />
             <div className="btns">
               <button type="submit">Создать</button>
               <button type="button" onClick={() => setShowForm(false)}>Отмена</button>
@@ -115,10 +121,53 @@ function App() {
           trips.map(trip => (
             <div key={trip.id} className="card trip">
               <button onClick={() => deleteTrip(user.email, trip.id)} className="delete">X</button>
-              <h3>{trip.name}</h3>
+              <h3 onClick={() => setSelectedTrip(trip)}>{trip.name}</h3>
               <p><strong>Куда:</strong> {trip.destination}</p>
               <p><strong>Даты:</strong> {formatDate(trip.startDate)} — {formatDate(trip.endDate)}</p>
               <p><strong>Бюджет:</strong> {formatBudget(trip.budget)}</p>
+
+              {selectedTrip?.id === trip.id && (
+                <div className="details">
+                  <h4>Распределение бюджета</h4>
+                  {Object.entries(trip.budgetCategories || {}).map(([cat, val]) => (
+                    <div key={cat} className="budget-row">
+                      <span>{cat === 'transport' ? 'Транспорт' : cat === 'accommodation' ? 'Жильё' : cat === 'food' ? 'Еда' : cat === 'activities' ? 'Развлечения' : 'Другое'}:</span>
+                      <input 
+                        type="number" 
+                        value={val} 
+                        onChange={e => updateBudgetCategory(user.email, trip.id, cat, e.target.value)}
+                        placeholder="0"
+                      /> ₽
+                    </div>
+                  ))}
+                  <p><strong>Остаток:</strong> {formatBudget(trip.budget - Object.values(trip.budgetCategories || {}).reduce((a, b) => a + b, 0))}</p>
+
+                  <h4>Чек-лист</h4>
+                  <div className="checklist">
+                    {Object.entries(trip.checklist || {}).map(([id, item]) => (
+                      <label key={id}>
+                        <input 
+                          type="checkbox" 
+                          checked={item.done} 
+                          onChange={() => toggleChecklist(user.email, trip.id, id)}
+                        />
+                        {item.text}
+                      </label>
+                    ))}
+                    <input 
+                      placeholder="Добавить..." 
+                      value={checklistInput} 
+                      onChange={e => setChecklistInput(e.target.value)}
+                      onKeyPress={e => {
+                        if (e.key === 'Enter' && checklistInput.trim()) {
+                          addChecklistItem(user.email, trip.id, checklistInput);
+                          setChecklistInput('');
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ))
         )}

@@ -17,7 +17,7 @@ header h1 { font-size: 24px; color: #60a5fa; }
 .add { padding: 12px 24px; background: #22c55e; color: #fff; border: none; border-radius: 8px; font-weight: bold; margin-bottom: 20px; }
 
 .trips { display: grid; gap: 16px; }
-.trip { position: relative; background: #1e293b; padding: 20px; border-radius: 12px; }
+.trip { position: relative; background: #1e293b; padding: 20px; border-radius: 12px; cursor: pointer; }
 .delete { position: absolute; top: 12px; right: 12px; background: #ef4444; color: #fff; border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; }
 .trip h3 { color: #60a5fa; margin-bottom: 8px; }
 
@@ -26,6 +26,14 @@ header h1 { font-size: 24px; color: #60a5fa; }
 .btns button { flex: 1; padding: 12px; border-radius: 8px; }
 .btns button:first-child { background: #22c55e; color: #fff; border: none; }
 .btns button:last-child { background: #6b7280; color: #fff; border: none; }
+
+.budget-row { display: flex; justify-content: space-between; margin: 8px 0; }
+.budget-row input { width: 100px; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: rgba(255,255,255,0.1); color: #fff; }
+
+.checklist { margin-top: 16px; }
+.checklist label { display: block; margin: 8px 0; }
+.checklist input[type="checkbox"] { margin-right: 8px; }
+.checklist input[type="text"] { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #475569; background: rgba(255,255,255,0.1); color: #fff; }
 
 .success { background: #22c55e; color: #fff; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 16px; }
 .error { background: #ef4444; color: #fff; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 16px; }

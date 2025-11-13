@@ -10,12 +10,13 @@ const app = initializeApp({
   messagingSenderId: "572735933580",
   appId: "1:572735933580:web:768086185200796e603fa9"
 });
+
 const db = getDatabase(app);
 
 // === РЕГИСТРАЦИЯ ===
 export const register = async (username, email) => {
-  const userKey = email.replace(/[@.]/g, '_');
-  const userRef = ref(db, `users/${userKey}`);
+  const key = email.replace(/[@.]/g, '_');
+  const userRef = ref(db, `users/${key}`);
   const snap = await get(userRef);
   if (snap.exists()) throw new Error('Email уже занят');
   await set(userRef, { username, email });
@@ -24,37 +25,43 @@ export const register = async (username, email) => {
 
 // === ВХОД ===
 export const login = async (email) => {
-  const userKey = email.replace(/[@.]/g, '_');
-  const userRef = ref(db, `users/${userKey}`);
+  const key = email.replace(/[@.]/g, '_');
+  const userRef = ref(db, `users/${key}`);
   const snap = await get(userRef);
   if (!snap.exists()) throw new Error('Пользователь не найден');
   return snap.val();
 };
 
-// === РЕАЛТАЙМ ПОЕЗДКИ (по email) ===
+// === РЕАЛТАЙМ ПОЕЗДКИ ===
 export const subscribeToTrips = (email, callback) => {
-  const userKey = email.replace(/[@.]/g, '_');
-  const tripsRef = ref(db, `trips/${userKey}`);
-  
+  const key = email.replace(/[@.]/g, '_');
+  const tripsRef = ref(db, `trips/${key}`);
   const unsubscribe = onValue(tripsRef, (snap) => {
     const data = snap.val() || {};
     const trips = Object.entries(data).map(([id, trip]) => ({ id, ...trip }));
     callback(trips);
   });
-
   return unsubscribe;
 };
 
 // === СОЗДАТЬ ПОЕЗДКУ ===
 export const createTrip = async (email, data) => {
-  const userKey = email.replace(/[@.]/g, '_');
-  const tripRef = push(ref(db, `trips/${userKey}`));
+  const key = email.replace(/[@.]/g, '_');
+  const tripRef = push(ref(db, `trips/${key}`));
   const trip = {
     name: data.name,
     destination: data.destination,
     startDate: data.startDate,
     endDate: data.endDate,
-    budget: data.budget || 0
+    budget: data.budget || 0,
+    budgetCategories: {
+      transport: 0,
+      accommodation: 0,
+      food: 0,
+      activities: 0,
+      other: 0
+    },
+    checklist: {}
   };
   await set(tripRef, trip);
   return { id: tripRef.key, ...trip };
@@ -62,7 +69,28 @@ export const createTrip = async (email, data) => {
 
 // === УДАЛИТЬ ПОЕЗДКУ ===
 export const deleteTrip = async (email, tripId) => {
-  const userKey = email.replace(/[@.]/g, '_');
-  const tripRef = ref(db, `trips/${userKey}/${tripId}`);
-  await remove(tripRef);
+  const key = email.replace(/[@.]/g, '_');
+  await remove(ref(db, `trips/${key}/${tripId}`));
+};
+
+// === ДОБАВИТЬ В ЧЕК-ЛИСТ ===
+export const addChecklistItem = async (email, tripId, text) => {
+  const key = email.replace(/[@.]/g, '_');
+  const itemRef = push(ref(db, `trips/${key}/${tripId}/checklist`));
+  await set(itemRef, { text, done: false });
+};
+
+// === ПЕРЕКЛЮЧИТЬ ЧЕК-ЛИСТ ===
+export const toggleChecklist = async (email, tripId, itemId) => {
+  const key = email.replace(/[@.]/g, '_');
+  const itemRef = ref(db, `trips/${key}/${tripId}/checklist/${itemId}`);
+  const snap = await get(itemRef);
+  const item = snap.val();
+  await set(itemRef, { ...item, done: !item.done });
+};
+
+// === ОБНОВИТЬ БЮДЖЕТ ПО КАТЕГОРИЯМ ===
+export const updateBudgetCategory = async (email, tripId, category, value) => {
+  const key = email.replace(/[@.]/g, '_');
+  await set(ref(db, `trips/${key}/${tripId}/budgetCategories/${category}`), Number(value));
 };
