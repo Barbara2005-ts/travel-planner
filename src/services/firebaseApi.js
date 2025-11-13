@@ -34,7 +34,7 @@ export const login = async (email) => {
   return { id: user.id, username: user.username, email };
 };
 
-// === РЕАЛТАЙМ ПОДПИСКА (БЕЗ ГЛОБАЛЬНОГО listener!) ===
+// === РЕАЛТАЙМ ПОДПИСКА ===
 export const subscribeToData = (userId, callback) => {
   const tripsRef = ref(db, 'trips');
 
@@ -53,6 +53,7 @@ export const subscribeToData = (userId, callback) => {
         ...value
       }));
 
+      // id из пути — КРИТИЧНО!
       const tripWithId = { id, ...trip, members, invitations };
 
       if (trip.createdBy === userId) {
@@ -85,7 +86,9 @@ export const subscribeToData = (userId, callback) => {
 // === СОЗДАНИЕ ПОЕЗДКИ ===
 export const createTrip = async (userId, username, data) => {
   const tripRef = push(ref(db, 'trips'));
+  const tripId = tripRef.key;
   const trip = {
+    id: tripId,
     name: data.name,
     destination: data.destination,
     startDate: data.startDate,
@@ -149,7 +152,7 @@ export const sendInvites = async (tripId, emails, inviterId) => {
   return results;
 };
 
-// === ПРИНЯТИЕ ПРИГЛАШЕНИЯ (БЕЗ ПЕРЕКЛЮЧЕНИЯ АККАУНТА!) ===
+// === ПРИНЯТИЕ ПРИГЛАШЕНИЯ ===
 export const acceptInvite = async (tripId, userId, currentUsername) => {
   const tripRef = ref(db, `trips/${tripId}`);
   const snap = await get(tripRef);
@@ -164,7 +167,6 @@ export const acceptInvite = async (tripId, userId, currentUsername) => {
   if (!inviteEntry) throw new Error('Приглашение не найдено или уже принято');
 
   const [inviteKey] = inviteEntry;
-
   await remove(ref(db, `trips/${tripId}/invitations/${inviteKey}`));
 
   const memberRef = push(ref(db, `trips/${tripId}/members`));
