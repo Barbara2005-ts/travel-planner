@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   register, login, createTrip, deleteTrip, 
   subscribeToTrips, addChecklistItem, toggleChecklist, 
-  updateBudgetCategory, addParticipant, updateParticipant, removeParticipant 
+  updateBudgetCategory, removeBudgetCategory, 
+  addParticipant, updateParticipant, removeParticipant 
 } from './services/firebaseApi';
 import './App.css';
 
@@ -108,7 +109,6 @@ function App() {
         + Новая поездка
       </button>
 
-      {/* === МОДАЛЬНАЯ ФОРМА === */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -251,21 +251,25 @@ function App() {
                           <p><small>Потрачено: {formatBudget(spent)} из {formatBudget(trip.budget)}</small></p>
 
                           <div className="budget-list">
-                            {Object.entries(trip.budgetCategories || {}).map(([cat, val]) => (
-                              <div key={cat} className="budget-item">
-                                <span>{cat.replace(/_/g, ' ')}</span>
-                                <input 
-                                  type="number" 
-                                  value={val || ''} 
-                                  placeholder="0"
-                                  onChange={e => updateBudgetCategory(user.email, trip.id, cat, e.target.value)}
-                                /> ₽
-                                <button 
-                                  className="remove"
-                                  onClick={() => updateBudgetCategory(user.email, trip.id, cat, 0)}
-                                >×</button>
-                              </div>
-                            ))}
+                            {Object.entries(trip.budgetCategories || {})
+                              .filter(([_, val]) => val > 0)
+                              .map(([cat, val]) => (
+                                <div key={cat} className="budget-item">
+                                  <span>{cat.replace(/_/g, ' ')}</span>
+                                  <input 
+                                    type="number" 
+                                    value={val} 
+                                    placeholder="0"
+                                    onChange={e => updateBudgetCategory(user.email, trip.id, cat, e.target.value)}
+                                  /> ₽
+                                  <button 
+                                    className="remove"
+                                    onClick={() => removeBudgetCategory(user.email, trip.id, cat)}
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
                             <div className="add-budget">
                               <input 
                                 placeholder="Категория" 
