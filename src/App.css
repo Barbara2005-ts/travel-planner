@@ -544,6 +544,120 @@ body {
   border-radius: 8px;
 }
 
+/* === МОДАЛЬНОЕ ОКНО === */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+.modal {
+  background: #1e293b;
+  padding: 32px;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  animation: slideUp 0.4s ease;
+}
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.modal h3 {
+  margin-bottom: 24px;
+  color: #60a5fa;
+  font-size: 24px;
+  text-align: center;
+}
+.input-group {
+  margin-bottom: 20px;
+}
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+.input-group input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #475569;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 16px;
+}
+.input-group input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96,165,250,0.2);
+}
+.dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.btns {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+.btns button {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btns .primary {
+  background: #22c55e;
+  color: #fff;
+  border: none;
+}
+.btns .secondary {
+  background: #475569;
+  color: #fff;
+  border: none;
+}
+
+/* === ПУСТЫЕ ПОЛЯ === */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.budget-item input,
+.participant input {
+  width: 90px;
+  text-align: right;
+}
+.budget-item input::placeholder,
+.participant input::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+/* === АНИМАЦИИ === */
+@keyframes slideUp {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* === АНИМАЦИИ === */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }

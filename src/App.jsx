@@ -65,10 +65,9 @@ function App() {
   const formatDate = d => new Date(d).toLocaleDateString('ru');
   const formatBudget = b => new Intl.NumberFormat('ru').format(b) + ' ₽';
 
-  // === ДОБАВИТЬ КАТЕГОРИЮ БЮДЖЕТА ===
   const addBudgetCategory = () => {
     if (!budgetCategoryName.trim() || !budgetCategoryAmount) return;
-    const key = budgetCategoryName.toLowerCase().replace(/\s+/g, '');
+    const key = budgetCategoryName.toLowerCase().replace(/\s+/g, '_');
     updateBudgetCategory(user.email, selectedTrip.id, key, budgetCategoryAmount);
     setBudgetCategoryName('');
     setBudgetCategoryAmount('');
@@ -78,7 +77,7 @@ function App() {
     return (
       <div className="auth">
         <div className="card">
-          <h1>Планировщик</h1>
+          <h1>Планировщик Путешествий</h1>
           <h2>{isLogin ? 'Вход' : 'Регистрация'}</h2>
           {message && <p className={message.includes('Ошибка') ? 'error' : 'success'}>{message}</p>}
           <form onSubmit={handleAuth}>
@@ -109,22 +108,47 @@ function App() {
         + Новая поездка
       </button>
 
+      {/* === КРАСИВАЯ ФОРМА СОЗДАНИЯ === */}
       {showForm && (
-        <div className="card form">
-          <h3>Новая поездка</h3>
-          <form onSubmit={handleCreate}>
-            <input placeholder="Название" value={tripForm.name} onChange={e => setTripForm({ ...tripForm, name: e.target.value })} required />
-            <input placeholder="Куда" value={tripForm.destination} onChange={e => setTripForm({ ...tripForm, destination: e.target.value })} required />
-            <div className="dates">
-              <input type="date" value={tripForm.startDate} onChange={e => setTripForm({ ...tripForm, startDate: e.target.value })} required />
-              <input type="date" value={tripForm.endDate} onChange={e => setTripForm({ ...tripForm, endDate: e.target.value })} required />
-            </div>
-            <input type="number" placeholder="Общий бюджет ₽" value={tripForm.budget} onChange={e => setTripForm({ ...tripForm, budget: e.target.value })} required />
-            <div className="btns">
-              <button type="submit">Создать</button>
-              <button type="button" onClick={() => setShowForm(false)}>Отмена</button>
-            </div>
-          </form>
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowForm(false)}>×</button>
+            <h3>Новая поездка</h3>
+            <form onSubmit={handleCreate}>
+              <div className="input-group">
+                <label>Название</label>
+                <input value={tripForm.name} onChange={e => setTripForm({ ...tripForm, name: e.target.value })} required />
+              </div>
+              <div className="input-group">
+                <label>Куда едем</label>
+                <input value={tripForm.destination} onChange={e => setTripForm({ ...tripForm, destination: e.target.value })} required />
+              </div>
+              <div className="input-group dates">
+                <div>
+                  <label>С</label>
+                  <input type="date" value={tripForm.startDate} onChange={e => setTripForm({ ...tripForm, startDate: e.target.value })} required />
+                </div>
+                <div>
+                  <label>По</label>
+                  <input type="date" value={tripForm.endDate} onChange={e => setTripForm({ ...tripForm, endDate: e.target.value })} required />
+                </div>
+              </div>
+              <div className="input-group">
+                <label>Общий бюджет</label>
+                <input 
+                  type="number" 
+                  placeholder="0" 
+                  value={tripForm.budget} 
+                  onChange={e => setTripForm({ ...tripForm, budget: e.target.value })} 
+                  required 
+                />
+              </div>
+              <div className="btns">
+                <button type="submit" className="primary">Создать</button>
+                <button type="button" onClick={() => setShowForm(false)} className="secondary">Отмена</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -141,14 +165,12 @@ function App() {
             const spent = Object.values(trip.budgetCategories || {}).reduce((a, b) => a + b, 0);
             const budgetProgress = trip.budget ? (spent / trip.budget) * 100 : 0;
 
-            const participants = Object.values(trip.participants || {});
-            const totalOwed = participants.reduce((a, p) => a + p.amount, 0);
-            const perPerson = participants.length > 0 ? Math.round(trip.budget / participants.length) : 0;
+            const participants = Object.entries(trip.participants || {}).map(([id, p]) => ({ id, ...p }));
 
             return (
               <div key={trip.id} className="card trip">
                 <button onClick={() => deleteTrip(user.email, trip.id)} className="delete">
-                  X
+                  ×
                 </button>
                 
                 <div 
@@ -179,7 +201,6 @@ function App() {
                     </div>
 
                     <div className="tab-content">
-                      {/* === ПЛАНЫ === */}
                       {activeTab === 'plans' && (
                         <div>
                           <h4>Планы на путешествие</h4>
@@ -219,7 +240,6 @@ function App() {
                         </div>
                       )}
 
-                      {/* === БЮДЖЕТ === */}
                       {activeTab === 'budget' && (
                         <div>
                           <h4>Распределение бюджета</h4>
@@ -231,16 +251,17 @@ function App() {
                           <div className="budget-list">
                             {Object.entries(trip.budgetCategories || {}).map(([cat, val]) => (
                               <div key={cat} className="budget-item">
-                                <span>{cat}</span>
+                                <span>{cat.replace(/_/g, ' ')}</span>
                                 <input 
                                   type="number" 
-                                  value={val} 
+                                  value={val || ''} 
+                                  placeholder="0"
                                   onChange={e => updateBudgetCategory(user.email, trip.id, cat, e.target.value)}
                                 /> ₽
                                 <button 
                                   className="remove"
                                   onClick={() => updateBudgetCategory(user.email, trip.id, cat, 0)}
-                                >X</button>
+                                >×</button>
                               </div>
                             ))}
                             <div className="add-budget">
@@ -251,7 +272,7 @@ function App() {
                               />
                               <input 
                                 type="number" 
-                                placeholder="Сумма" 
+                                placeholder="Сумма"
                                 value={budgetCategoryAmount}
                                 onChange={e => setBudgetCategoryAmount(e.target.value)}
                               />
@@ -262,25 +283,24 @@ function App() {
                         </div>
                       )}
 
-                      {/* === УЧАСТНИКИ === */}
                       {activeTab === 'participants' && (
                         <div>
                           <h4>Список участников</h4>
-                          <p><small>Каждый должен: {formatBudget(perPerson)}</small></p>
+                          <p><small><strong>Всего нужно:</strong> {formatBudget(trip.budget)}</small></p>
                           <div className="participants">
                             {participants.map(p => (
                               <div key={p.id} className="participant">
                                 <span>{p.name}</span>
                                 <input 
                                   type="number" 
-                                  value={p.amount} 
-                                  onChange={e => updateParticipant(user.email, trip.id, p.id, e.target.value)}
+                                  value={p.amount || ''} 
                                   placeholder="0"
+                                  onChange={e => updateParticipant(user.email, trip.id, p.id, e.target.value)}
                                 /> ₽
                                 <button 
                                   className="remove"
                                   onClick={() => removeParticipant(user.email, trip.id, p.id)}
-                                >X</button>
+                                >×</button>
                               </div>
                             ))}
                             <div className="add-participant">
@@ -291,14 +311,14 @@ function App() {
                               />
                               <input 
                                 type="number" 
-                                placeholder={`Должен: ${perPerson}`}
-                                value={participantAmount || perPerson}
+                                placeholder="Сколько должен"
+                                value={participantAmount}
                                 onChange={e => setParticipantAmount(e.target.value)}
                               />
                               <button 
                                 onClick={() => {
                                   if (participantName.trim()) {
-                                    addParticipant(user.email, trip.id, participantName, participantAmount || perPerson);
+                                    addParticipant(user.email, trip.id, participantName, participantAmount || 0);
                                     setParticipantName('');
                                     setParticipantAmount('');
                                   }
@@ -306,7 +326,6 @@ function App() {
                               >Добавить</button>
                             </div>
                           </div>
-                          <p><strong>Всего нужно:</strong> {formatBudget(totalOwed)}</p>
                         </div>
                       )}
                     </div>
