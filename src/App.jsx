@@ -13,7 +13,7 @@ function App() {
   const [trips, setTrips] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [tripForm, setTripForm] = useState({ name: '', destination: '', startDate: '', endDate: '', budget: '' });
-  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [selectedTrip, setSelectedTrip] = useState(null); // ← ТЕПЕРЬ РАБОТАЕТ
   const [checklistInput, setChecklistInput] = useState('');
   const [message, setMessage] = useState('');
 
@@ -55,6 +55,7 @@ function App() {
     setUser(null);
     localStorage.removeItem('tripUser');
     setTrips([]);
+    setSelectedTrip(null); // ← СБРАСЫВАЕМ
   };
 
   const formatDate = d => new Date(d).toLocaleDateString('ru');
@@ -121,37 +122,51 @@ function App() {
           trips.map(trip => (
             <div key={trip.id} className="card trip">
               <button onClick={() => deleteTrip(user.email, trip.id)} className="delete">X</button>
-              <h3 onClick={() => setSelectedTrip(trip)}>{trip.name}</h3>
-              <p><strong>Куда:</strong> {trip.destination}</p>
-              <p><strong>Даты:</strong> {formatDate(trip.startDate)} — {formatDate(trip.endDate)}</p>
-              <p><strong>Бюджет:</strong> {formatBudget(trip.budget)}</p>
+              
+              {/* ← КЛИКАБЕЛЬНАЯ КАРТОЧКА */}
+              <div onClick={() => setSelectedTrip(trip)} className="trip-content">
+                <h3>{trip.name}</h3>
+                <p><strong>Куда:</strong> {trip.destination}</p>
+                <p><strong>Даты:</strong> {formatDate(trip.startDate)} — {formatDate(trip.endDate)}</p>
+                <p><strong>Бюджет:</strong> {formatBudget(trip.budget)}</p>
+              </div>
 
+              {/* ← ДЕТАЛИ ПОЕЗДКИ */}
               {selectedTrip?.id === trip.id && (
                 <div className="details">
                   <h4>Распределение бюджета</h4>
-                  {Object.entries(trip.budgetCategories || {}).map(([cat, val]) => (
-                    <div key={cat} className="budget-row">
-                      <span>{cat === 'transport' ? 'Транспорт' : cat === 'accommodation' ? 'Жильё' : cat === 'food' ? 'Еда' : cat === 'activities' ? 'Развлечения' : 'Другое'}:</span>
-                      <input 
-                        type="number" 
-                        value={val} 
-                        onChange={e => updateBudgetCategory(user.email, trip.id, cat, e.target.value)}
-                        placeholder="0"
-                      /> ₽
-                    </div>
-                  ))}
+                  {Object.entries(trip.budgetCategories || {}).map(([cat, val]) => {
+                    const totalSpent = Object.values(trip.budgetCategories || {}).reduce((a, b) => a + b, 0);
+                    const remaining = trip.budget - totalSpent;
+                    return (
+                      <div key={cat} className="budget-row">
+                        <span>
+                          {cat === 'transport' ? 'Транспорт' : 
+                           cat === 'accommodation' ? 'Жильё' : 
+                           cat === 'food' ? 'Еда' : 
+                           cat === 'activities' ? 'Развлечения' : 'Другое'}:
+                        </span>
+                        <input 
+                          type="number" 
+                          value={val} 
+                          onChange={e => updateBudgetCategory(user.email, trip.id, cat, e.target.value)}
+                          placeholder="0"
+                        /> ₽
+                      </div>
+                    );
+                  })}
                   <p><strong>Остаток:</strong> {formatBudget(trip.budget - Object.values(trip.budgetCategories || {}).reduce((a, b) => a + b, 0))}</p>
 
                   <h4>Чек-лист</h4>
                   <div className="checklist">
                     {Object.entries(trip.checklist || {}).map(([id, item]) => (
-                      <label key={id}>
+                      <label key={id} className="check-item">
                         <input 
                           type="checkbox" 
                           checked={item.done} 
                           onChange={() => toggleChecklist(user.email, trip.id, id)}
                         />
-                        {item.text}
+                        <span className={item.done ? 'done' : ''}>{item.text}</span>
                       </label>
                     ))}
                     <input 
