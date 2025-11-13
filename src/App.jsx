@@ -1,8 +1,7 @@
-// src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { 
   register, login, createTrip, deleteTrip, 
-  sendInvites, acceptInvite, subscribeToData, unsubscribe 
+  sendInvites, acceptInvite, subscribeToData 
 } from './services/firebaseApi';
 import './App.css';
 
@@ -28,9 +27,8 @@ function App() {
     e.preventDefault();
     try {
       const res = isLogin ? await login(form.email) : await register(form.username, form.email);
-      const userData = res;
-      setUser(userData);
-      localStorage.setItem('tripUser', JSON.stringify(userData));
+      setUser(res);
+      localStorage.setItem('tripUser', JSON.stringify(res));
       setForm({ username: '', email: '' });
       setMessage(isLogin ? 'Вошли!' : 'Зарегистрированы!');
     } catch (err) {
@@ -86,7 +84,6 @@ function App() {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('tripUser');
-    unsubscribe();
   };
 
   const formatDate = d => new Date(d).toLocaleDateString('ru');
@@ -132,7 +129,16 @@ function App() {
           {data.invites.map(inv => (
             <div key={inv.tripId} className="invite-item">
               <span><strong>{inv.inviter}</strong> → "{inv.tripName}"</span>
-              <button onClick={() => acceptInvite(inv.tripId, user.id).then(() => setMessage('Присоединились!'))}>
+              <button 
+                onClick={async () => {
+                  try {
+                    await acceptInvite(inv.tripId, user.id, user.username);
+                    setMessage('Присоединились к поездке!');
+                  } catch (err) {
+                    setMessage('Ошибка: ' + err.message);
+                  }
+                }}
+              >
                 Принять
               </button>
             </div>

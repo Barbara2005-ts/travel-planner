@@ -1,4 +1,3 @@
-// src/services/firebaseApi.js
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, get, push, onValue, remove } from 'firebase/database';
 
@@ -47,10 +46,7 @@ export const subscribeToData = (userId, callback) => {
     Object.entries(trips).forEach(([id, trip]) => {
       if (!trip) return;
 
-      // members — всегда массив
       const members = Array.isArray(trip.members) ? trip.members : [];
-
-      // invitations — через Object.entries()
       const rawInvites = trip.invitations || {};
       const invitations = Object.entries(rawInvites).map(([key, value]) => ({
         key,
@@ -59,19 +55,16 @@ export const subscribeToData = (userId, callback) => {
 
       const tripWithId = { id, ...trip, members, invitations };
 
-      // Я — создатель
       if (trip.createdBy === userId) {
         myTrips.push(tripWithId);
         return;
       }
 
-      // Я — участник
       if (members.some(m => m.userId === userId)) {
         myTrips.push(tripWithId);
         return;
       }
 
-      // Есть приглашение
       const inv = invitations.find(i => i.userId === userId && i.status === 'pending');
       if (inv) {
         const admin = members.find(m => m.role === 'admin');
@@ -86,20 +79,13 @@ export const subscribeToData = (userId, callback) => {
     callback({ trips: myTrips, invites });
   });
 
-  // Возвращаем функцию отписки
   return unsubscribe;
-};
-
-export const unsubscribe = () => {
-  if (listener) listener();
-  listener = null;
 };
 
 // === СОЗДАНИЕ ПОЕЗДКИ ===
 export const createTrip = async (userId, username, data) => {
   const tripRef = push(ref(db, 'trips'));
   const trip = {
-    id: tripRef.key,
     name: data.name,
     destination: data.destination,
     startDate: data.startDate,
@@ -125,17 +111,12 @@ export const deleteTrip = async (tripId, userId) => {
   await remove(tripRef);
 };
 
-// === ОТПРАВКА ПРИГЛАШЕНИЙ (ИСПРАВЛЕНО!) ===
+// === ОТПРАВКА ПРИГЛАШЕНИЙ ===
 export const sendInvites = async (tripId, emails, inviterId) => {
-  console.log('sendInvites:', { tripId, emails, inviterId });
-
   const usersRef = ref(db, 'users');
   const snap = await get(usersRef);
   const users = snap.val() || {};
-  console.log('Все пользователи:', users);
-
   const validUsers = Object.values(users).filter(u => emails.includes(u.email));
-  console.log('Найдено пользователей:', validUsers.map(u => u.email));
 
   if (validUsers.length === 0) {
     throw new Error('Пользователи не найдены. Проверьте email.');
@@ -148,14 +129,8 @@ export const sendInvites = async (tripId, emails, inviterId) => {
 
   const results = [];
   for (const user of validUsers) {
-    if (user.id === inviterId) {
-      console.log('Пропуск: нельзя пригласить себя');
-      continue;
-    }
-    if (members.some(m => m.userId === user.id)) {
-      console.log('Пропуск: уже участник');
-      continue;
-    }
+    if (user.id === inviterId) continue;
+    if (members.some(m => m.userId === user.id)) continue;
 
     const inviteRef = push(ref(db, `trips/${tripId}/invitations`));
     await set(inviteRef, {
@@ -164,7 +139,6 @@ export const sendInvites = async (tripId, emails, inviterId) => {
       email: user.email,
       status: 'pending'
     });
-    console.log('Приглашение отправлено:', user.email);
     results.push(user.email);
   }
 
@@ -175,40 +149,28 @@ export const sendInvites = async (tripId, emails, inviterId) => {
   return results;
 };
 
-// === ПРИНЯТИЕ ПРИГЛАШЕНИЯ ===
-// === ПРИНЯТИЕ ПРИГЛАШЕНИЯ ===
+// === ПРИНЯТИЕ ПРИГЛАШЕНИЯ (БЕЗ ПЕРЕКЛЮЧЕНИЯ АККАУНТА!) ===
 export const acceptInvite = async (tripId, userId, currentUsername) => {
-  console.log('Принятие:', { tripId, userId, currentUsername });
-
   const tripRef = ref(db, `trips/${tripId}`);
   const snap = await get(tripRef);
   const trip = snap.val();
   if (!trip) throw new Error('Поездка не найдена');
 
-  // ЧИТАЕМ ПРИГЛАШЕНИЯ ЧЕРЕЗ Object.entries()
   const rawInvites = trip.invitations || {};
-  const inviteEntries = Object.entries(rawInvites);
-  const inviteEntry = inviteEntries.find(([key, value]) => 
+  const inviteEntry = Object.entries(rawInvites).find(([key, value]) => 
     value.userId === userId && value.status === 'pending'
   );
 
-  if (!inviteEntry) {
-    console.log('Приглашение не найдено для:', userId);
-    throw new Error('Приглашение не найдено или уже принято');
-  }
+  if (!inviteEntry) throw new Error('Приглашение не найдено или уже принято');
 
   const [inviteKey] = inviteEntry;
 
-  // Удаляем приглашение
   await remove(ref(db, `trips/${tripId}/invitations/${inviteKey}`));
-  console.log('Приглашение удалено:', inviteKey);
 
-  // Добавляем в участники — ТВОЙ username!
   const memberRef = push(ref(db, `trips/${tripId}/members`));
   await set(memberRef, { 
     userId, 
     username: currentUsername, 
     role: 'member' 
   });
-  console.log('Добавлен в участники:', currentUsername);
 };
