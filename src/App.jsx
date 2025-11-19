@@ -1,330 +1,548 @@
+// src/App.jsx — TRIPFLOW 2025 — ТЫ СДЕЛАЛ ЭТО. ТЫ — БОГ.
 import React, { useState, useEffect } from 'react';
 import Confetti from 'react-confetti';
-import { 
-  register, login, createTrip, deleteTrip, subscribeToTrips,
+import {
+  register, login, subscribeToTrips, createTrip, deleteTrip,
   addChecklistItem, toggleChecklist,
-  updateBudgetCategory, removeBudgetCategory,
-  addParticipant, updateParticipant, removeParticipant
-} from './services/firebaseApi';
+  addParticipant, removeParticipant,
+  updateBudgetCategory, removeBudgetCategory
+} from './firebaseApi.js';
 import './App.css';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [isLogin, setIsLogin] = useState(true);
-  const [form, setForm] = useState({ username: '', email: '' });
   const [trips, setTrips] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [tripForm, setTripForm] = useState({ name: '', destination: '', startDate: '', endDate: '', budget: '' });
-  const [selectedTrip, setSelectedTrip] = useState(null);
-  const [activeTab, setActiveTab] = useState('');
-  const [checklistInput, setChecklistInput] = useState('');
-  const [participantName, setParticipantName] = useState('');
-  const [participantAmount, setParticipantAmount] = useState('');
-  const [budgetCategoryName, setBudgetCategoryName] = useState('');
-  const [budgetCategoryAmount, setBudgetCategoryAmount] = useState('');
-  const [message, setMessage] = useState('');
+  const [currentTrip, setCurrentTrip] = useState(null);
+  const [activeTab, setActiveTab] = useState('checklist');
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  // Авторизация
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [isRegister, setIsRegister] = useState(false);
+  const [showAuth, setShowAuth] = useState(true);
+
+  // Создание поездки
+  const [newTripDest, setNewTripDest] = useState('');
+  const [newTripStart, setNewTripStart] = useState('');
+  const [newTripEnd, setNewTripEnd] = useState('');
+  const [newTripBudget, setNewTripBudget] = useState('');
+
+  // Остальное
+  const [newItemText, setNewItemText] = useState('');
+  const [newParticipantName, setNewParticipantName] = useState('');
+  const [newParticipantAmount, setNewParticipantAmount] = useState('');
+  const [newCategory, setNewCategory] = useState('');
+  const [newAmount, setNewAmount] = useState('');
+
+  const [unsubscribeTrips, setUnsubscribeTrips] = useState(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('tripUser');
-    if (saved) setUser(JSON.parse(saved));
+    const saved = localStorage.getItem('user');
+    if (saved) {
+      const u = JSON.parse(saved);
+      setUser(u);
+      setShowAuth(false);
+      startTripsListener(u.email);
+    }
   }, []);
 
-  useEffect(() => {
-    if (!user) return;
-    const unsub = subscribeToTrips(user.email, setTrips);
-    return () => unsub && unsub();
-  }, [user]);
+  const startTripsListener = (email) => {
+    if (unsubscribeTrips) unsubscribeTrips();
+    const unsub = subscribeToTrips(email, (data) => {
+      setTrips(data);
+      if (currentTrip) {
+        const updated = data.find(t => t.id === currentTrip.id);
+        if (updated) setCurrentTrip(updated);
+      }
+    });
+    setUnsubscribeTrips(() => unsub);
+  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
     try {
-      const res = isLogin ? await login(form.email) : await register(form.username, form.email);
-      setUser(res);
-      localStorage.setItem('tripUser', JSON.stringify(res));
-      setForm({ username: '', email: '' });
-      setMessage(isLogin ? 'Добро пожаловать!' : 'Аккаунт создан!');
+      const u = isRegister ? await register(username, email) : await login(email);
+      localStorage.setItem('user', JSON.stringify(u));
+      setUser(u);
+      setShowAuth(false);
+      startTripsListener(u.email);
     } catch (err) {
-      setMessage('Ошибка: ' + err.message);
+      alert(err.message);
     }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    await createTrip(user.email, tripForm);
-    setTripForm({ name: '', destination: '', startDate: '', endDate: '', budget: '' });
-    setShowForm(false);
-    setMessage('Поездка создана!');
-  };
-
   const logout = () => {
+    if (unsubscribeTrips) {
+      unsubscribeTrips();
+      setUnsubscribeTrips(null);
+    }
+    localStorage.removeItem('user');
     setUser(null);
-    localStorage.removeItem('tripUser');
     setTrips([]);
-    setSelectedTrip(null);
-    setActiveTab('');
+    setCurrentTrip(null);
+    setShowAuth(true);
+    setShowConfetti(false);
   };
 
-  const formatDate = d => new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-  const formatBudget = b => new Intl.NumberFormat('ru-RU').format(b) + ' ₽';
+  const createNewTrip = async () => {
+    if (!newTripDest.trim() || !newTripBudget || !newTripStart || !newTripEnd) {
+      alert('Заполните все поля');
+      return;
+    }
+    
+    if (new Date(newTripStart) > new Date(newTripEnd)) {
+      alert('Дата начала не может быть позже даты окончания');
+      return;
+    }
+    
+    if (Number(newTripBudget) <= 0) {
+      alert('Бюджет должен быть положительным числом');
+      return;
+    }
 
-  const addBudgetCategory = () => {
-    if (!budgetCategoryName.trim() || !budgetCategoryAmount) return;
-    const key = budgetCategoryName.toLowerCase().replace(/\s+/g, '_');
-    updateBudgetCategory(user.email, selectedTrip.id, key, budgetCategoryAmount);
-    setBudgetCategoryName('');
-    setBudgetCategoryAmount('');
+    const tripData = {
+      destination: newTripDest.trim(),
+      dates: `${newTripStart} → ${newTripEnd}`,
+      budget: Number(newTripBudget),
+      checklist: {},
+      participants: {},
+      budgetCategories: {}
+    };
+    
+    await createTrip(user.email, tripData);
+    setNewTripDest('');
+    setNewTripStart('');
+    setNewTripEnd('');
+    setNewTripBudget('');
   };
 
-  if (!user) {
+  const addItem = async () => {
+    if (!newItemText.trim() || !currentTrip) return;
+    await addChecklistItem(user.email, currentTrip.id, newItemText.trim());
+    setNewItemText('');
+  };
+
+  const toggleItem = async (id) => {
+    await toggleChecklist(user.email, currentTrip.id, id);
+  };
+
+  const addParticipantHandler = async () => {
+    if (!newParticipantName.trim() || !currentTrip) return;
+    const amount = Number(newParticipantAmount) || 0;
+    if (amount < 0) {
+      alert('Сумма не может быть отрицательной');
+      return;
+    }
+    await addParticipant(user.email, currentTrip.id, newParticipantName.trim(), amount);
+    setNewParticipantName('');
+    setNewParticipantAmount('');
+  };
+
+  const removeParticipantHandler = async (id) => {
+    if (!confirm('Удалить участника?')) return;
+    try {
+      await removeParticipant(user.email, currentTrip.id, id);
+    } catch (err) {
+      alert('Ошибка при удалении участника');
+    }
+  };
+
+  const addBudgetHandler = async () => {
+    if (!newCategory.trim() || !currentTrip) return;
+    const amount = Number(newAmount) || 0;
+    if (amount < 0) {
+      alert('Сумма не может быть отрицательной');
+      return;
+    }
+    await updateBudgetCategory(user.email, currentTrip.id, newCategory.trim(), amount);
+    setNewCategory('');
+    setNewAmount('');
+  };
+
+  const removeBudgetCategoryHandler = async (category) => {
+    if (!confirm('Удалить категорию?')) return;
+    try {
+      await removeBudgetCategory(user.email, currentTrip.id, category);
+    } catch (err) {
+      alert('Ошибка при удалении категории');
+    }
+  };
+
+  const deleteTripHandler = async (tripId, e) => {
+    e.stopPropagation();
+    if (!confirm('Удалить поездку? Это действие нельзя отменить.')) return;
+    try {
+      await deleteTrip(user.email, tripId);
+      if (currentTrip && currentTrip.id === tripId) {
+        setCurrentTrip(null);
+      }
+    } catch (err) {
+      alert('Ошибка при удалении поездки');
+    }
+  };
+
+  // Подсчёты
+  const totalBudget = currentTrip?.budget || 0;
+  const totalSpent = currentTrip ? Object.values(currentTrip.budgetCategories || {}).reduce((a, b) => a + Number(b), 0) : 0;
+  const totalCollected = currentTrip ? Object.values(currentTrip.participants || {}).reduce((a, p) => a + Number(p.amount || 0), 0) : 0;
+  const checklistDone = currentTrip ? Object.values(currentTrip.checklist || {}).filter(i => i.done).length : 0;
+  const checklistTotal = Object.keys(currentTrip?.checklist || {}).length;
+
+  // КОНФЕТТИ ПРИ 100% ЧЕК-ЛИСТА
+  useEffect(() => {
+    if (checklistTotal > 0 && checklistDone === checklistTotal && !showConfetti) {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 10000);
+    }
+  }, [checklistDone, checklistTotal, showConfetti]);
+
+  // КОМПОНЕНТ АВАТАРКИ
+  const ParticipantAvatar = ({ name }) => {
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#DDA0DD', '#98D8C8', '#A0D468'];
+    const color = colors[name.charCodeAt(0) % colors.length];
+    const initials = name.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+    return (
+      <div className="participant-avatar" style={{ background: color }}>
+        {initials || '?'}
+      </div>
+    );
+  };
+
+  // Пустые состояния
+  const EmptyState = ({ icon, message }) => (
+    <div className="empty-state">
+      <div className="empty-icon">{icon}</div>
+      <p>{message}</p>
+    </div>
+  );
+
+  if (showAuth) {
     return (
       <div className="auth">
         <div className="card">
-          <h1>Планировщик Путешествий</h1>
-          <h2>{isLogin ? 'Вход' : 'Регистрация'}</h2>
-          {message && <p className={message.includes('Ошибка') ? 'error' : 'success'}>{message}</p>}
+          <h1>TripFlow</h1>
           <form onSubmit={handleAuth}>
-            {!isLogin && (
-              <input placeholder="Ваше имя" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} required />
+            {isRegister && (
+              <input 
+                placeholder="Имя" 
+                value={username} 
+                onChange={e => setUsername(e.target.value)} 
+                required 
+              />
             )}
-            <input type="email" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
-            <button type="submit">{isLogin ? 'Войти' : 'Зарегистрироваться'}</button>
+            <input 
+              type="email" 
+              placeholder="Email" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              required 
+            />
+            <button type="submit" className="primary">
+              {isRegister ? 'Зарегистрироваться' : 'Войти'}
+            </button>
           </form>
-          <button className="link" onClick={() => setIsLogin(!isLogin)}>
-            {isLogin ? 'Нет аккаунта? Зарегистрируйтесь' : 'Уже есть аккаунт? Войти'}
-          </button>
+          <p>
+            <button className="link" onClick={() => setIsRegister(!isRegister)}>
+              {isRegister ? 'Войти' : 'Регистрация'}
+            </button>
+          </p>
         </div>
       </div>
     );
   }
 
+  if (!currentTrip) {
+    return (
+      <div className="container">
+        <header>
+          <h1>TripFlow</h1>
+          <div className="greeting">
+            Привет, <strong>{user.username || user.email.split('@')[0]}</strong>!
+            <button className="logout" onClick={logout}>Выйти</button>
+          </div>
+        </header>
+
+        <div className="new-trip-card">
+          <h2>Новая поездка</h2>
+          <div className="new-trip-grid">
+            <input 
+              placeholder="Куда едем?" 
+              value={newTripDest} 
+              onChange={e => setNewTripDest(e.target.value)} 
+            />
+            <input 
+              type="date" 
+              value={newTripStart} 
+              onChange={e => setNewTripStart(e.target.value)} 
+            />
+            <input 
+              type="date" 
+              value={newTripEnd} 
+              onChange={e => setNewTripEnd(e.target.value)} 
+            />
+            <input 
+              type="number" 
+              placeholder="Бюджет ₽" 
+              value={newTripBudget} 
+              onChange={e => setNewTripBudget(e.target.value)} 
+              min="0"
+            />
+            <button className="primary" onClick={createNewTrip}>Создать</button>
+          </div>
+        </div>
+
+        {trips.length === 0 ? (
+          <EmptyState 
+            icon="✈️" 
+            message="У вас пока нет поездок. Создайте первую!" 
+          />
+        ) : (
+          <div className="trips-grid">
+            {trips.map(trip => {
+              const collected = Object.values(trip.participants || {}).reduce((a, p) => a + (p.amount || 0), 0);
+              const spent = Object.values(trip.budgetCategories || {}).reduce((a, b) => a + Number(b), 0);
+              const progress = trip.budget > 0 ? (collected / trip.budget) * 100 : 0;
+              
+              return (
+                <div key={trip.id} className="trip-card" onClick={() => setCurrentTrip(trip)}>
+                  <div className="trip-card-header">
+                    <h3>{trip.destination}</h3>
+                    <p>{trip.dates}</p>
+                  </div>
+                  <div className="trip-card-body">
+                    <div className="progress-label">
+                      <span>Собрано: {collected.toLocaleString()} ₽</span>
+                      <span>из {trip.budget.toLocaleString()} ₽</span>
+                    </div>
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill" 
+                        style={{ width: `${progress}%` }} 
+                      />
+                    </div>
+                    <div className="spent-amount">
+                      Потрачено: {spent.toLocaleString()} ₽
+                    </div>
+                  </div>
+                  <button 
+                    className="delete-btn trip-delete" 
+                    onClick={(e) => deleteTripHandler(trip.id, e)}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="app container">
-      <header>
-        <h1>Мои поездки — {user.username}</h1>
-        <button onClick={logout} className="logout">Выйти</button>
-      </header>
+    <div className="container">
+      {showConfetti && <Confetti recycle={false} numberOfPieces={500} gravity={0.1} />}
 
-      {message && <p className="success">{message}</p>}
-
-      <button onClick={() => setShowForm(true)} className="add">
-        + Новая поездка
+      <button className="back-btn" onClick={() => setCurrentTrip(null)}>
+        ← Назад к поездкам
       </button>
 
-      {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowForm(false)}>×</button>
-            <h3>Новая поездка</h3>
-            <form onSubmit={handleCreate}>
-              <div className="input-group">
-                <label>Название</label>
-                <input value={tripForm.name} onChange={e => setTripForm({ ...tripForm, name: e.target.value })} required />
-              </div>
-              <div className="input-group">
-                <label>Куда</label>
-                <input value={tripForm.destination} onChange={e => setTripForm({ ...tripForm, destination: e.target.value })} />
-              </div>
-              <div className="input-group dates">
-                <div>
-                  <label>С</label>
-                  <input type="date" value={tripForm.startDate} onChange={e => setTripForm({ ...tripForm, startDate: e.target.value })} required />
+      <h1 className="trip-title">{currentTrip.destination}</h1>
+      <p className="trip-dates">{currentTrip.dates}</p>
+
+      <div className="money-overview">
+        <div className="progress-label big">
+          <span>Собрано: {totalCollected.toLocaleString()} ₽</span>
+          <span>из {totalBudget.toLocaleString()} ₽</span>
+        </div>
+        <div className="progress-bar big">
+          <div 
+            className="progress-fill" 
+            style={{ width: `${totalBudget > 0 ? (totalCollected / totalBudget) * 100 : 0}%` }} 
+          />
+        </div>
+        <div className="spent-amount">
+          Потрачено: {totalSpent.toLocaleString()} ₽
+        </div>
+      </div>
+
+      <div className="modal-tabs">
+        <button 
+          className={activeTab === 'checklist' ? 'active' : ''} 
+          onClick={() => setActiveTab('checklist')}
+        >
+          Чеклист
+        </button>
+        <button 
+          className={activeTab === 'participants' ? 'active' : ''} 
+          onClick={() => setActiveTab('participants')}
+        >
+          Участники
+        </button>
+        <button 
+          className={activeTab === 'budget' ? 'active' : ''} 
+          onClick={() => setActiveTab('budget')}
+        >
+          Бюджет
+        </button>
+      </div>
+
+      {activeTab === 'checklist' && (
+        <div className="section-card">
+          <div 
+            className="progress-label" 
+            style={{ 
+              fontSize: '22px', 
+              fontWeight: 'bold', 
+              color: checklistDone === checklistTotal && checklistTotal > 0 ? '#4ade80' : 'inherit' 
+            }}
+          >
+            {checklistDone === checklistTotal && checklistTotal > 0 ? (
+              <>ВСЁ ГОТОВО К ПОЕЗДКЕ! 🎉</>
+            ) : (
+              <>Выполнено: {checklistDone} из {checklistTotal}</>
+            )}
+          </div>
+          <div className="progress-bar">
+            <div 
+              className="progress-fill" 
+              style={{
+                width: `${checklistTotal > 0 ? (checklistDone / checklistTotal) * 100 : 0}%`,
+                background: checklistDone === checklistTotal ? '#4ade80' : undefined 
+              }} 
+            />
+          </div>
+
+          <div className="add-item">
+            <input 
+              placeholder="Что нужно сделать?" 
+              value={newItemText} 
+              onChange={e => setNewItemText(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addItem()} 
+            />
+            <button className="primary" onClick={addItem}>+ Добавить</button>
+          </div>
+
+          <div className="items-list">
+            {Object.keys(currentTrip.checklist || {}).length === 0 ? (
+              <EmptyState 
+                icon="📝" 
+                message="Добавьте пункты в чек-лист для подготовки к поездке" 
+              />
+            ) : (
+              Object.entries(currentTrip.checklist || {}).map(([id, item]) => (
+                <div 
+                  key={id} 
+                  className={`item-card ${item.done ? 'done' : ''}`} 
+                  onClick={() => toggleItem(id)}
+                >
+                  <div className="checkbox">{item.done && '✔'}</div>
+                  <span>{item.text}</span>
                 </div>
-                <div>
-                  <label>По</label>
-                  <input type="date" value={tripForm.endDate} onChange={e => setTripForm({ ...tripForm, endDate: e.target.value })} required />
-                </div>
-              </div>
-              <div className="input-group">
-                <label>Бюджет</label>
-                <input type="number" placeholder="0" value={tripForm.budget} onChange={e => setTripForm({ ...tripForm, budget: e.target.value })} required />
-              </div>
-              <div className="btns">
-                <button type="submit" className="primary">Создать</button>
-                <button type="button" onClick={() => setShowForm(false)} className="secondary">Отмена</button>
-              </div>
-            </form>
+              ))
+            )}
           </div>
         </div>
       )}
 
-      <div className="trips">
-        {trips.length === 0 ? (
-          <p className="empty">Нет поездок. Создайте первую!</p>
-        ) : (
-          trips.map(trip => {
-            const checklistItems = Object.entries(trip.checklist || {}).map(([id, item]) => ({ id, ...item }));
-            const doneCount = checklistItems.filter(i => i.done).length;
-            const totalCount = checklistItems.length;
-            const checklistProgress = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
+      {activeTab === 'participants' && (
+        <div className="section-card">
+          <div className="add-item">
+            <input 
+              placeholder="Имя участника" 
+              value={newParticipantName} 
+              onChange={e => setNewParticipantName(e.target.value)} 
+            />
+            <input 
+              type="number" 
+              placeholder="₽" 
+              value={newParticipantAmount} 
+              onChange={e => setNewParticipantAmount(e.target.value)}
+              min="0"
+            />
+            <button className="primary" onClick={addParticipantHandler}>Добавить</button>
+          </div>
+          <div className="items-list">
+            {Object.keys(currentTrip.participants || {}).length === 0 ? (
+              <EmptyState 
+                icon="👥" 
+                message="Добавьте участников поездки" 
+              />
+            ) : (
+              Object.entries(currentTrip.participants || {}).map(([id, p]) => (
+                <div key={id} className="budget-item participant-item">
+                  <ParticipantAvatar name={p.name} />
+                  <div className="participant-info">
+                    <strong>{p.name}</strong>
+                  </div>
+                  <div className="participant-actions">
+                    <strong>{(p.amount || 0).toLocaleString()} ₽</strong>
+                    <button 
+                      className="delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeParticipantHandler(id);
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
-            const participants = Object.entries(trip.participants || {}).map(([id, p]) => ({ id, ...p }));
-            const totalOwed = participants.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-            const moneyProgress = trip.budget ? Math.round((totalOwed / trip.budget) * 100) : 0;
-            const spent = Object.values(trip.budgetCategories || {}).reduce((a, b) => a + b, 0);
-
-            return (
-              <div key={trip.id} className="card trip">
-                <button onClick={() => deleteTrip(user.email, trip.id)} className="delete">×</button>
-
-                <div 
-                  className={`trip-header ${selectedTrip?.id === trip.id ? 'open' : ''}`}
-                  onClick={() => {
-                    setSelectedTrip(selectedTrip?.id === trip.id ? null : trip);
-                    setActiveTab('');
-                  }}
-                >
-                  <h3>{trip.name}</h3>
-                  <p><strong>Куда:</strong> {trip.destination}</p>
-                  <p><strong>Даты:</strong> {formatDate(trip.startDate)} – {formatDate(trip.endDate)}</p>
-
-                  {/* ПРОГРЕСС-БАР "СОБРАНО ДЕНЕГ" */}
-                  <div className="money-progress">
-                    <div className="progress-label">
-                      <span>Собрано</span>
-                      <strong>{formatBudget(totalOwed)} / {formatBudget(trip.budget)}</strong>
-                    </div>
-                    <div className="progress">
-                      <div className="progress-bar" style={{ width: `${moneyProgress}%` }}></div>
+      {activeTab === 'budget' && (
+        <div className="section-card">
+          <div className="add-item">
+            <input 
+              placeholder="Категория (еда, транспорт...)" 
+              value={newCategory} 
+              onChange={e => setNewCategory(e.target.value)} 
+            />
+            <input 
+              type="number" 
+              placeholder="₽" 
+              value={newAmount} 
+              onChange={e => setNewAmount(e.target.value)}
+              min="0"
+            />
+            <button className="primary" onClick={addBudgetHandler}>Добавить</button>
+          </div>
+          <div className="items-list">
+            {Object.keys(currentTrip.budgetCategories || {}).length === 0 ? (
+              <EmptyState 
+                icon="💰" 
+                message="Добавьте категории расходов для отслеживания бюджета" 
+              />
+            ) : (
+              Object.entries(currentTrip.budgetCategories || {}).map(([cat, amount]) => (
+                <div key={cat} className="budget-item">
+                  <div className="budget-item-content">
+                    <span className="category-name">{cat}</span>
+                    <div className="budget-actions">
+                      <strong>{Number(amount).toLocaleString()} ₽</strong>
+                      <button 
+                        className="delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeBudgetCategoryHandler(cat);
+                        }}
+                      >
+                        ×
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                {/* КОНФЕТТИ ПРИ 100% ПЛАНОВ */}
-                {selectedTrip?.id === trip.id && checklistProgress === 100 && totalCount > 0 && (
-                  <Confetti
-                    width={window.innerWidth}
-                    height={500}
-                    recycle={false}
-                    numberOfPieces={300}
-                    gravity={0.1}
-                  />
-                )}
-
-                {selectedTrip?.id === trip.id && (
-                  <div className="trip-tabs">
-                    <div className="tabs">
-                      <button className={activeTab === 'plans' ? 'active' : ''} onClick={() => setActiveTab('plans')}>Планы</button>
-                      <button className={activeTab === 'budget' ? 'active' : ''} onClick={() => setActiveTab('budget')}>Бюджет</button>
-                      <button className={activeTab === 'participants' ? 'active' : ''} onClick={() => setActiveTab('participants')}>Участники</button>
-                    </div>
-
-                    <div className="tab-content">
-                      {/* ПЛАНЫ */}
-                      {activeTab === 'plans' && (
-                        <div>
-                          <h4>Планы</h4>
-                          <div className="progress">
-                            <div className="progress-bar" style={{ width: `${checklistProgress}%` }}></div>
-                          </div>
-                          <p><small>{doneCount} из {totalCount} выполнено</small></p>
-
-                          <div className="checklist">
-                            {checklistItems.map(item => (
-                              <div key={item.id} className="check-item">
-                                <label className="checkbox-label">
-                                  <input type="checkbox" checked={item.done} onChange={() => toggleChecklist(user.email, trip.id, item.id)} />
-                                  <span className="checkmark"></span>
-                                </label>
-                                <span className={item.done ? 'done' : ''}>{item.text}</span>
-                              </div>
-                            ))}
-                            <div className="check-input">
-                              <input
-                                placeholder="Новый план..."
-                                value={checklistInput}
-                                onChange={e => setChecklistInput(e.target.value)}
-                                onKeyPress={e => {
-                                  if (e.key === 'Enter' && checklistInput.trim()) {
-                                    addChecklistItem(user.email, trip.id, checklistInput);
-                                    setChecklistInput('');
-                                  }
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* БЮДЖЕТ */}
-                      {activeTab === 'budget' && (
-                        <div>
-                          <h4>Бюджет</h4>
-                          <div className="progress">
-                            <div className="progress-bar" style={{ width: `${(spent / trip.budget) * 100}%` }}></div>
-                          </div>
-                          <p><small>Потрачено: {formatBudget(spent)} из {formatBudget(trip.budget)}</small></p>
-
-                          <div className="budget-list">
-                            {Object.entries(trip.budgetCategories || {})
-                              .filter(([_, val]) => val > 0)
-                              .map(([cat, val]) => (
-                                <div key={cat} className="budget-item">
-                                  <span>{cat.replace(/_/g, ' ')}</span>
-                                  <input type="number" value={val} onChange={e => updateBudgetCategory(user.email, trip.id, cat, e.target.value)} /> ₽
-                                  <button className="remove" onClick={() => removeBudgetCategory(user.email, trip.id, cat)}>×</button>
-                                </div>
-                              ))}
-                            <div className="add-budget">
-                              <input placeholder="Категория" value={budgetCategoryName} onChange={e => setBudgetCategoryName(e.target.value)} />
-                              <input type="number" placeholder="Сумма" value={budgetCategoryAmount} onChange={e => setBudgetCategoryAmount(e.target.value)} />
-                              <button onClick={addBudgetCategory}>Добавить</button>
-                            </div>
-                          </div>
-                          <p><strong>Остаток:</strong> {formatBudget(trip.budget - spent)}</p>
-                        </div>
-                      )}
-
-                      {/* УЧАСТНИКИ */}
-                      {activeTab === 'participants' && (
-                        <div>
-                          <h4>Участники</h4>
-                          <p><strong>Осталось собрать:</strong> {formatBudget(trip.budget - totalOwed)}</p>
-
-                          <div className="participants">
-                            {participants.map(p => (
-                              <div key={p.id} className="participant">
-                                <img
-                                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=0ea5e9&color=fff&bold=true&size=128`}
-                                  alt={p.name}
-                                  className="avatar"
-                                />
-                                <div className="participant-info">
-                                  <strong>{p.name}</strong>
-                                  <input
-                                    type="number"
-                                    value={p.amount || ''}
-                                    placeholder="0"
-                                    onChange={e => updateParticipant(user.email, trip.id, p.id, e.target.value)}
-                                  /> ₽
-                                </div>
-                                <button className="remove" onClick={() => removeParticipant(user.email, trip.id, p.id)}>×</button>
-                              </div>
-                            ))}
-
-                            <div className="add-participant">
-                              <input placeholder="Имя" value={participantName} onChange={e => setParticipantName(e.target.value)} />
-                              <input type="number" placeholder="Сумма" value={participantAmount} onChange={e => setParticipantAmount(e.target.value)} />
-                              <button onClick={() => {
-                                if (participantName.trim()) {
-                                  addParticipant(user.email, trip.id, participantName, participantAmount || 0);
-                                  setParticipantName('');
-                                  setParticipantAmount('');
-                                }
-                              }}>Добавить</button>
-                            </div>
-                          </div>
-
-                          <p><small>Собрано: {formatBudget(totalOwed)} из {formatBudget(trip.budget)}</small></p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
