@@ -522,7 +522,7 @@ function App() {
               </div>
               
               <div className="input-group">
-                <label>💰 Бюджет (₽)</label>
+                <label>💰 Бюджет</label>
                 <input 
                   type="number" 
                   placeholder="50000" 
