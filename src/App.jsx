@@ -23,7 +23,6 @@ function App() {
   const [budgetCategoryName, setBudgetCategoryName] = useState('');
   const [budgetCategoryAmount, setBudgetCategoryAmount] = useState('');
   const [message, setMessage] = useState('');
-  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('tripUser');
@@ -100,8 +99,6 @@ function App() {
 
   return (
     <div className="app container">
-      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} numberOfPieces={300} gravity={0.1} />}
-
       <header>
         <h1>Мои поездки — {user.username}</h1>
         <button onClick={logout} className="logout">Выйти</button>
@@ -120,26 +117,26 @@ function App() {
             <h3>Новая поездка</h3>
             <form onSubmit={handleCreate}>
               <div className="input-group">
-                <label>Название поездки</label>
+                <label>Название</label>
                 <input value={tripForm.name} onChange={e => setTripForm({ ...tripForm, name: e.target.value })} required />
               </div>
               <div className="input-group">
-                <label>Куда едем</label>
+                <label>Куда</label>
                 <input value={tripForm.destination} onChange={e => setTripForm({ ...tripForm, destination: e.target.value })} />
               </div>
               <div className="input-group dates">
                 <div>
-                  <label>Начало</label>
-                  <input type="date" value={tripForm.startDate} onChange={e => setTripForm({ ...tripForm, startDate: e.target.value })} />
+                  <label>С</label>
+                  <input type="date" value={tripForm.startDate} onChange={e => setTripForm({ ...tripForm, startDate: e.target.value })} required />
                 </div>
                 <div>
-                  <label>Конец</label>
-                  <input type="date" value={tripForm.endDate} onChange={e => setTripForm({ ...tripForm, endDate: e.target.value })} />
+                  <label>По</label>
+                  <input type="date" value={tripForm.endDate} onChange={e => setTripForm({ ...tripForm, endDate: e.target.value })} required />
                 </div>
               </div>
               <div className="input-group">
                 <label>Бюджет</label>
-                <input type="number" placeholder="0" value={tripForm.budget} onChange={e => setTripForm({ ...tripForm, budget: e.target.value })} />
+                <input type="number" placeholder="0" value={tripForm.budget} onChange={e => setTripForm({ ...tripForm, budget: e.target.value })} required />
               </div>
               <div className="btns">
                 <button type="submit" className="primary">Создать</button>
@@ -163,16 +160,7 @@ function App() {
             const participants = Object.entries(trip.participants || {}).map(([id, p]) => ({ id, ...p }));
             const totalOwed = participants.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
             const moneyProgress = trip.budget ? Math.round((totalOwed / trip.budget) * 100) : 0;
-
             const spent = Object.values(trip.budgetCategories || {}).reduce((a, b) => a + b, 0);
-
-            // Конфетти при 100% чеклиста
-            useEffect(() => {
-              if (checklistProgress === 100 && totalCount > 0) {
-                setShowConfetti(true);
-                setTimeout(() => setShowConfetti(false), 6000);
-              }
-            }, [checklistProgress, totalCount]);
 
             return (
               <div key={trip.id} className="card trip">
@@ -180,7 +168,10 @@ function App() {
 
                 <div 
                   className={`trip-header ${selectedTrip?.id === trip.id ? 'open' : ''}`}
-                  onClick={() => setSelectedTrip(selectedTrip?.id === trip.id ? null : trip)}
+                  onClick={() => {
+                    setSelectedTrip(selectedTrip?.id === trip.id ? null : trip);
+                    setActiveTab('');
+                  }}
                 >
                   <h3>{trip.name}</h3>
                   <p><strong>Куда:</strong> {trip.destination}</p>
@@ -189,7 +180,7 @@ function App() {
                   {/* ПРОГРЕСС-БАР "СОБРАНО ДЕНЕГ" */}
                   <div className="money-progress">
                     <div className="progress-label">
-                      <span>Собрано денег</span>
+                      <span>Собрано</span>
                       <strong>{formatBudget(totalOwed)} / {formatBudget(trip.budget)}</strong>
                     </div>
                     <div className="progress">
@@ -197,6 +188,17 @@ function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* КОНФЕТТИ ПРИ 100% ПЛАНОВ */}
+                {selectedTrip?.id === trip.id && checklistProgress === 100 && totalCount > 0 && (
+                  <Confetti
+                    width={window.innerWidth}
+                    height={500}
+                    recycle={false}
+                    numberOfPieces={300}
+                    gravity={0.1}
+                  />
+                )}
 
                 {selectedTrip?.id === trip.id && (
                   <div className="trip-tabs">
@@ -207,13 +209,14 @@ function App() {
                     </div>
 
                     <div className="tab-content">
+                      {/* ПЛАНЫ */}
                       {activeTab === 'plans' && (
                         <div>
-                          <h4>Планы на путешествие</h4>
+                          <h4>Планы</h4>
                           <div className="progress">
                             <div className="progress-bar" style={{ width: `${checklistProgress}%` }}></div>
                           </div>
-                          <p><small>{doneCount} из {totalCount} выполнено {checklistProgress === 100 && 'Всё готово!'}</small></p>
+                          <p><small>{doneCount} из {totalCount} выполнено</small></p>
 
                           <div className="checklist">
                             {checklistItems.map(item => (
@@ -242,9 +245,10 @@ function App() {
                         </div>
                       )}
 
+                      {/* БЮДЖЕТ */}
                       {activeTab === 'budget' && (
                         <div>
-                          <h4>Распределение бюджета</h4>
+                          <h4>Бюджет</h4>
                           <div className="progress">
                             <div className="progress-bar" style={{ width: `${(spent / trip.budget) * 100}%` }}></div>
                           </div>
@@ -270,9 +274,10 @@ function App() {
                         </div>
                       )}
 
+                      {/* УЧАСТНИКИ */}
                       {activeTab === 'participants' && (
                         <div>
-                          <h4>Участники поездки</h4>
+                          <h4>Участники</h4>
                           <p><strong>Осталось собрать:</strong> {formatBudget(trip.budget - totalOwed)}</p>
 
                           <div className="participants">
@@ -297,7 +302,7 @@ function App() {
                             ))}
 
                             <div className="add-participant">
-                              <input placeholder="Имя участника" value={participantName} onChange={e => setParticipantName(e.target.value)} />
+                              <input placeholder="Имя" value={participantName} onChange={e => setParticipantName(e.target.value)} />
                               <input type="number" placeholder="Сумма" value={participantAmount} onChange={e => setParticipantAmount(e.target.value)} />
                               <button onClick={() => {
                                 if (participantName.trim()) {
