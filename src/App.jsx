@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  register, login, createTrip, deleteTrip, 
-  subscribeToTrips, addChecklistItem, toggleChecklist, 
-  updateBudgetCategory, removeBudgetCategory, 
-  addParticipant, updateParticipant, removeParticipant 
+  register, login, createTrip, deleteTrip, subscribeToTrips,
+  addChecklistItem, toggleChecklist,
+  updateBudgetCategory, removeBudgetCategory,
+  addParticipant, updateParticipant, removeParticipant
 } from './services/firebaseApi';
 import './App.css';
 

@@ -1,120 +1,124 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
-  onSnapshot, 
-  deleteField,
-  getDoc,           // ← ДОБАВИЛ
-  collection,       // ← ДОБАВИЛ
-  serverTimestamp   // ← ДЛЯ БЕЗОПАСНЫХ ID
-} from 'firebase/firestore';
+import { getDatabase, ref, set, get, push, onValue, remove, update } from 'firebase/database';
 
-// ← ВСТАВЬ СВОИ ДАННЫЕ ИЗ FIREBASE CONSOLE
+// ТВОИ РЕАЛЬНЫЕ КЛЮЧИ (вставь свои из Firebase Console!)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
+  apiKey: "AIzaSyCw8Ng4OddMJDxBI7elLPfwQdrGTZagPgI",
+  authDomain: "travel-planner-firebase-a7eef.firebaseapp.com",
+  databaseURL: "https://travel-planner-firebase-a7eef-default-rtdb.firebaseio.com",
+  projectId: "travel-planner-firebase-a7eef",
+  storageBucket: "travel-planner-firebase-a7eef.firebasestorage.app",
+  messagingSenderId: "572735933580",
+  appId: "1:572735933580:web:768086185200796e603fa9"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getDatabase(app);
 
 // === РЕГИСТРАЦИЯ ===
 export const register = async (username, email) => {
-  const userRef = doc(db, 'users', email);
-  await setDoc(userRef, { username, email }, { merge: true });
+  const safeEmail = email.replace(/[.@]/g, '_');
+  const userRef = ref(db, `users/${safeEmail}`);
+  const snap = await get(userRef);
+  if (snap.exists()) throw new Error('Email уже занят');
+  await set(userRef, { username, email });
   return { username, email };
 };
 
 // === ВХОД ===
 export const login = async (email) => {
-  const userRef = doc(db, 'users', email);
-  const snapshot = await getDoc(userRef);  // ← getDoc теперь есть
-  if (!snapshot.exists()) throw new Error('Пользователь не найден');
-  return snapshot.data();
+  const safeEmail = email.replace(/[.@]/g, '_');
+  const userRef = ref(db, `users/${safeEmail}`);
+  const snap = await get(userRef);
+  if (!snap.exists()) throw new Error('Пользователь не найден');
+  return snap.val();
+};
+
+// === ПОДПИСКА НА ПОЕЗДКИ ===
+export const subscribeToTrips = (email, callback) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
+  const tripsRef = ref(db, `trips/${safeEmail}`);
+  return onValue(tripsRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    const trips = Object.entries(data).map(([id, trip]) => ({ id, ...trip }));
+    callback(trips);
+  });
 };
 
 // === СОЗДАТЬ ПОЕЗДКУ ===
-export const createTrip = async (userEmail, tripData) => {
-  const tripRef = doc(collection(db, 'users', userEmail, 'trips')); // ← Авто-ID
-  await setDoc(tripRef, {
+export const createTrip = async (email, tripData) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
+  const newTripRef = push(ref(db, `trips/${safeEmail}`));
+  const tripId = newTripRef.key;
+  await set(newTripRef, {
     ...tripData,
     budget: Number(tripData.budget) || 0,
     checklist: {},
     budgetCategories: {},
     participants: {},
-    createdAt: serverTimestamp()
+    createdAt: Date.now()
   });
-  return tripRef.id;
 };
 
 // === УДАЛИТЬ ПОЕЗДКУ ===
-export const deleteTrip = async (userEmail, tripId) => {
-  const tripRef = doc(db, 'users', userEmail, 'trips', tripId);
-  await deleteDoc(tripRef);
-};
-
-// === ПОДПИСКА НА ПОЕЗДКИ ===
-export const subscribeToTrips = (userEmail, callback) => {
-  const tripsRef = collection(db, 'users', userEmail, 'trips'); // ← collection
-  return onSnapshot(tripsRef, snapshot => {
-    const trips = [];
-    snapshot.forEach(doc => {
-      trips.push({ id: doc.id, ...doc.data() });
-    });
-    callback(trips);
-  });
+export const deleteTrip = async (email, tripId) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
+  await remove(ref(db, `trips/${safeEmail}/${tripId}`));
 };
 
 // === ЧЕКЛИСТ ===
-export const addChecklistItem = async (userEmail, tripId, text) => {
+export const addChecklistItem = async (email, tripId, text) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
   const itemId = Date.now().toString();
-  const itemRef = doc(db, 'users', userEmail, 'trips', tripId, 'checklist', itemId);
-  await setDoc(itemRef, { text, done: false });
+  await set(ref(db, `trips/${safeEmail}/${tripId}/checklist/${itemId}`), {
+    text,
+    done: false
+  });
 };
 
-export const toggleChecklist = async (userEmail, tripId, itemId) => {
-  const itemRef = doc(db, 'users', userEmail, 'trips', tripId, 'checklist', itemId);
-  const snapshot = await getDoc(itemRef);
-  if (!snapshot.exists()) return;
-  await updateDoc(itemRef, { done: !snapshot.data().done });
+export const toggleChecklist = async (email, tripId, itemId) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
+  const itemRef = ref(db, `trips/${safeEmail}/${tripId}/checklist/${itemId}`);
+  const snap = await get(itemRef);
+  if (snap.exists()) {
+    await update(itemRef, { done: !snap.val().done });
+  }
 };
 
 // === БЮДЖЕТ ===
-export const updateBudgetCategory = async (userEmail, tripId, category, amount) => {
-  const tripRef = doc(db, 'users', userEmail, 'trips', tripId);
+export const updateBudgetCategory = async (email, tripId, category, amount) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
   const value = amount === '' ? 0 : Number(amount);
   if (value > 0) {
-    await updateDoc(tripRef, { [`budgetCategories.${category}`]: value });
+    await set(ref(db, `trips/${safeEmail}/${tripId}/budgetCategories/${category}`), value);
   } else {
-    await updateDoc(tripRef, { [`budgetCategories.${category}`]: deleteField() });
+    await remove(ref(db, `trips/${safeEmail}/${tripId}/budgetCategories/${category}`));
   }
 };
-   
-export const removeBudgetCategory = async (userEmail, tripId, categoryKey) => {
-  const tripRef = doc(db, 'users', userEmail, 'trips', tripId);
-  await updateDoc(tripRef, { [`budgetCategories.${categoryKey}`]: deleteField() });
+
+export const removeBudgetCategory = async (email, tripId, category) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
+  await remove(ref(db, `trips/${safeEmail}/${tripId}/budgetCategories/${category}`));
 };
 
-// === УЧАСТНИКИ ===
-export const addParticipant = async (userEmail, tripId, name, amount = 0) => {
-  const participantId = Date.now().toString();
-  const participantRef = doc(db, 'users', userEmail, 'trips', tripId, 'participants', participantId);
-  await setDoc(participantRef, { name, amount: Number(amount) });
+// ====== УЧАСТНИКИ ===
+export const addParticipant = async (email, tripId, name, amount = 0) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
+  const id = Date.now().toString();
+  await set(ref(db, `trips/${safeEmail}/${tripId}/participants/${id}`), {
+    name,
+    amount: Number(amount)
+  });
 };
 
-export const updateParticipant = async (userEmail, tripId, participantId, amount) => {
-  const participantRef = doc(db, 'users', userEmail, 'trips', tripId, 'participants', participantId);
-  await updateDoc(participantRef, { amount: Number(amount) || 0 });
+export const updateParticipant = async (email, tripId, participantId, amount) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
+  await update(ref(db, `trips/${safeEmail}/${tripId}/participants/${participantId}`), {
+    amount: Number(amount) || 0
+  });
 };
 
-export const removeParticipant = async (userEmail, tripId, participantId) => {
-  const participantRef = doc(db, 'users', userEmail, 'trips', tripId, 'participants', participantId);
-  await deleteDoc(participantRef);
+export const removeParticipant = async (email, tripId, participantId) => {
+  const safeEmail = email.replace(/[.@]/g, '_');
+  await remove(ref(db, `trips/${safeEmail}/${tripId}/participants/${participantId}`));
 };
