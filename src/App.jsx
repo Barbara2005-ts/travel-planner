@@ -1,4 +1,4 @@
-// src/App.jsx — TRIPFLOW 2025 — ПРЕМИУМ ДИЗАЙН
+// src/App.jsx — TRIPFLOW 2025 — ПОЛНЫЙ КОД С РЕАЛЬНЫМ ВРЕМЕНЕМ
 import React, { useState, useEffect } from 'react';
 import Confetti from 'react-confetti';
 import {
@@ -37,6 +37,7 @@ function App() {
 
   const [unsubscribeTrips, setUnsubscribeTrips] = useState(null);
 
+  // ОСНОВНОЙ ИСПРАВЛЕНИЕ: Слушатель изменений в реальном времени
   useEffect(() => {
     const saved = localStorage.getItem('user');
     if (saved) {
@@ -49,13 +50,21 @@ function App() {
 
   const startTripsListener = (email) => {
     if (unsubscribeTrips) unsubscribeTrips();
+    
     const unsub = subscribeToTrips(email, (data) => {
+      console.log('Получены обновленные данные:', data);
       setTrips(data);
+      
+      // ОБНОВЛЯЕМ ТЕКУЩУЮ ПОЕЗДКУ ЕСЛИ ОНА ЕСТЬ
       if (currentTrip) {
-        const updated = data.find(t => t.id === currentTrip.id);
-        if (updated) setCurrentTrip(updated);
+        const updatedTrip = data.find(t => t.id === currentTrip.id);
+        if (updatedTrip) {
+          console.log('Обновляем текущую поездку:', updatedTrip);
+          setCurrentTrip(updatedTrip);
+        }
       }
     });
+    
     setUnsubscribeTrips(() => unsub);
   };
 
@@ -108,7 +117,7 @@ function App() {
       checklist: {},
       participants: {},
       budgetCategories: {},
-      createdAt: new Date().toISOString()
+      createdAt: Date.now()
     };
     
     await createTrip(user.email, tripData);
@@ -118,14 +127,54 @@ function App() {
     setNewTripBudget('');
   };
 
+  // ИСПРАВЛЕННЫЕ ФУНКЦИИ С ОПТИМИСТИЧНЫМИ ОБНОВЛЕНИЯМИ
   const addItem = async () => {
     if (!newItemText.trim() || !currentTrip) return;
-    await addChecklistItem(user.email, currentTrip.id, newItemText.trim());
+    
+    // Оптимистичное обновление
+    const tempId = `temp-${Date.now()}`;
+    const optimisticTrip = {
+      ...currentTrip,
+      checklist: {
+        ...currentTrip.checklist,
+        [tempId]: { text: newItemText.trim(), done: false }
+      }
+    };
+    setCurrentTrip(optimisticTrip);
     setNewItemText('');
+    
+    try {
+      await addChecklistItem(user.email, currentTrip.id, newItemText.trim());
+    } catch (err) {
+      // Откатываем изменения при ошибке
+      setCurrentTrip(currentTrip);
+      alert('Ошибка при добавлении пункта');
+    }
   };
 
   const toggleItem = async (id) => {
-    await toggleChecklist(user.email, currentTrip.id, id);
+    if (!currentTrip || !currentTrip.checklist) return;
+    
+    const currentItem = currentTrip.checklist[id];
+    if (!currentItem) return;
+    
+    // Оптимистичное обновление
+    const optimisticTrip = {
+      ...currentTrip,
+      checklist: {
+        ...currentTrip.checklist,
+        [id]: { ...currentItem, done: !currentItem.done }
+      }
+    };
+    setCurrentTrip(optimisticTrip);
+    
+    try {
+      await toggleChecklist(user.email, currentTrip.id, id);
+    } catch (err) {
+      // Откатываем изменения при ошибке
+      setCurrentTrip(currentTrip);
+      alert('Ошибка при изменении статуса');
+    }
   };
 
   const addParticipantHandler = async () => {
@@ -135,16 +184,49 @@ function App() {
       alert('Сумма не может быть отрицательной');
       return;
     }
-    await addParticipant(user.email, currentTrip.id, newParticipantName.trim(), amount);
+    
+    // Оптимистичное обновление
+    const tempId = `temp-${Date.now()}`;
+    const optimisticTrip = {
+      ...currentTrip,
+      participants: {
+        ...currentTrip.participants,
+        [tempId]: { name: newParticipantName.trim(), amount }
+      }
+    };
+    setCurrentTrip(optimisticTrip);
     setNewParticipantName('');
     setNewParticipantAmount('');
+    
+    try {
+      await addParticipant(user.email, currentTrip.id, newParticipantName.trim(), amount);
+    } catch (err) {
+      setCurrentTrip(currentTrip);
+      alert('Ошибка при добавлении участника');
+    }
   };
 
   const removeParticipantHandler = async (id) => {
     if (!confirm('Удалить участника?')) return;
+    
+    // Оптимистичное обновление
+    const originalParticipants = { ...currentTrip.participants };
+    const optimisticTrip = {
+      ...currentTrip,
+      participants: Object.fromEntries(
+        Object.entries(currentTrip.participants || {}).filter(([key]) => key !== id)
+      )
+    };
+    setCurrentTrip(optimisticTrip);
+    
     try {
       await removeParticipant(user.email, currentTrip.id, id);
     } catch (err) {
+      // Откатываем при ошибке
+      setCurrentTrip({
+        ...currentTrip,
+        participants: originalParticipants
+      });
       alert('Ошибка при удалении участника');
     }
   };
@@ -156,16 +238,48 @@ function App() {
       alert('Сумма не может быть отрицательной');
       return;
     }
-    await updateBudgetCategory(user.email, currentTrip.id, newCategory.trim(), amount);
+    
+    // Оптимистичное обновление
+    const optimisticTrip = {
+      ...currentTrip,
+      budgetCategories: {
+        ...currentTrip.budgetCategories,
+        [newCategory.trim()]: amount
+      }
+    };
+    setCurrentTrip(optimisticTrip);
     setNewCategory('');
     setNewAmount('');
+    
+    try {
+      await updateBudgetCategory(user.email, currentTrip.id, newCategory.trim(), amount);
+    } catch (err) {
+      setCurrentTrip(currentTrip);
+      alert('Ошибка при добавлении категории');
+    }
   };
 
   const removeBudgetCategoryHandler = async (category) => {
     if (!confirm('Удалить категорию?')) return;
+    
+    // Оптимистичное обновление
+    const originalCategories = { ...currentTrip.budgetCategories };
+    const optimisticTrip = {
+      ...currentTrip,
+      budgetCategories: Object.fromEntries(
+        Object.entries(currentTrip.budgetCategories || {}).filter(([key]) => key !== category)
+      )
+    };
+    setCurrentTrip(optimisticTrip);
+    
     try {
       await removeBudgetCategory(user.email, currentTrip.id, category);
     } catch (err) {
+      // Откатываем при ошибке
+      setCurrentTrip({
+        ...currentTrip,
+        budgetCategories: originalCategories
+      });
       alert('Ошибка при удалении категории');
     }
   };
@@ -173,17 +287,23 @@ function App() {
   const deleteTripHandler = async (tripId, e) => {
     e.stopPropagation();
     if (!confirm('Удалить поездку? Это действие нельзя отменить.')) return;
+    
+    // Оптимистичное обновление
+    setTrips(prev => prev.filter(trip => trip.id !== tripId));
+    if (currentTrip && currentTrip.id === tripId) {
+      setCurrentTrip(null);
+    }
+    
     try {
       await deleteTrip(user.email, tripId);
-      if (currentTrip && currentTrip.id === tripId) {
-        setCurrentTrip(null);
-      }
     } catch (err) {
+      // Перезагружаем данные при ошибке
+      startTripsListener(user.email);
       alert('Ошибка при удалении поездки');
     }
   };
 
-  // Подсчёты
+  // Подсчёты (используем обновленный currentTrip)
   const totalBudget = currentTrip?.budget || 0;
   const totalSpent = currentTrip ? Object.values(currentTrip.budgetCategories || {}).reduce((a, b) => a + Number(b), 0) : 0;
   const totalCollected = currentTrip ? Object.values(currentTrip.participants || {}).reduce((a, p) => a + Number(p.amount || 0), 0) : 0;
@@ -402,7 +522,7 @@ function App() {
               </div>
               
               <div className="input-group">
-                <label>💰 Бюджет</label>
+                <label>💰 Бюджет (₽)</label>
                 <input 
                   type="number" 
                   placeholder="50000" 
@@ -655,7 +775,7 @@ function App() {
                   <EmptyState 
                     icon="📝"
                     message="Добавьте пункты в чек-лист для подготовки к поездке"
-                    gradient="linear-gradient(135deg, #d299c2 0%, #2f0664ff 100%)"
+                    gradient="linear-gradient(135deg, #d299c2 0%, #620879ff 100%)"
                   />
                 ) : (
                   Object.entries(currentTrip.checklist || {}).map(([id, item]) => (
@@ -721,7 +841,7 @@ function App() {
                   <EmptyState 
                     icon="👥"
                     message="Добавьте участников поездки"
-                    gradient="linear-gradient(135deg, #a8edea 0%, #5126ecff 100%)"
+                    gradient="linear-gradient(135deg, #a8edea 0%, #6532ddff 100%)"
                   />
                 ) : (
                   Object.entries(currentTrip.participants || {}).map(([id, p]) => (
