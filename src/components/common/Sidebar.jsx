@@ -35,10 +35,16 @@ const Sidebar = ({ user, isAdmin, currentView, onViewChange, onLogout, onShowInv
           <div className="user-email">{user.email}</div>
           {isAdmin && <div className="admin-badge">Админ</div>}
         </div>
-        <button className="notifications-btn" onClick={onShowInvites}>
-          🔔 {invitesCount > 0 && <span className="notifications-badge">{invitesCount}</span>}
-        </button>
-        <button className="logout-btn" onClick={onLogout}>🚪</button>
+        
+        {/* Группа кнопок */}
+        <div className="action-buttons">
+          <button className="notifications-btn" onClick={onShowInvites}>
+            🔔 {invitesCount > 0 && <span className="notifications-badge">{invitesCount}</span>}
+          </button>
+          <button className="logout-btn" onClick={onLogout}>
+            🚪
+          </button>
+        </div>
       </div>
     </div>
   );
