@@ -47,10 +47,10 @@ export const InviteListModal = ({ invites, onAccept, onReject, onClose }) => {
                 </div>
                 <div className="invite-actions">
                   <button className="accept-btn" onClick={() => onAccept(invite)}>
-                    ✅ Принять
+                    Принять
                   </button>
                   <button className="reject-btn" onClick={() => onReject(invite.id)}>
-                    ❌ Отклонить
+                    Отклонить
                   </button>
                 </div>
               </div>
@@ -79,7 +79,7 @@ export const ContributionModal = ({ tripName, onConfirm, onClose }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <h3>💰 Введите сумму взноса</h3>
+        <h3>Введите сумму взноса</h3>
         <p>Присоединяйтесь к поездке <strong>"{tripName}"</strong></p>
         <div className="contribution-input">
           <input 

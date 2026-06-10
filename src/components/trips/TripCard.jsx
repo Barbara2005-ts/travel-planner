@@ -17,7 +17,7 @@ const TripCard = ({ trip, onClick, onDelete, isOwner }) => {
         <h3>{trip.destination}</h3>
         <p>{trip.dates}</p>
         <div className="trip-stats">
-          <span>💰 {collected.toLocaleString()} ₽</span>
+          <span>{collected.toLocaleString()} ₽</span>
           <span>👥 {Object.keys(trip.participants || {}).length}</span>
         </div>
         <div className="progress-bar">

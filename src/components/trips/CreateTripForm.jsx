@@ -27,7 +27,7 @@ const CreateTripForm = ({ onCreate }) => {
 
   return (
     <div className="create-trip-card">
-      <h3>✈️ Создать новую поездку</h3>
+      <h3>Создать новую поездку</h3>
       <div className="create-trip-grid">
         <input 
           placeholder="Куда едем?" 
@@ -58,7 +58,7 @@ const CreateTripForm = ({ onCreate }) => {
         />
       </div>
       <button className="create-trip-btn" onClick={handleSubmit}>
-        Создать поездку ✈️
+        Создать поездку
       </button>
     </div>
   );

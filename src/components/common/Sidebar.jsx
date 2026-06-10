@@ -16,14 +16,14 @@ const Sidebar = ({ user, isAdmin, currentView, onViewChange, onLogout, onShowInv
           className={`nav-link ${currentView === 'trips' ? 'active' : ''}`} 
           onClick={() => onViewChange('trips')}
         >
-          📋 Мои поездки
+          Мои поездки
         </button>
         {isAdmin && (
           <button 
             className={`nav-link admin ${currentView === 'admin' ? 'active' : ''}`} 
             onClick={() => onViewChange('admin')}
           >
-            ⚙️ Админ панель
+            Админ панель
           </button>
         )}
       </div>

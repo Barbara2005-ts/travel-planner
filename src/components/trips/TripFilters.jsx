@@ -8,7 +8,7 @@ const TripFilters = ({ filters, onFilterChange, onReset, count }) => {
   return (
     <div className="filters-panel">
       <div className="filters-header">
-        <h3>🔍 Фильтры</h3>
+        <h3>Фильтры</h3>
         <button className="reset-filters-btn" onClick={onReset}>
           Сбросить все
         </button>

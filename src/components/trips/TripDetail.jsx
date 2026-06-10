@@ -145,23 +145,23 @@ const TripDetail = ({ trip, user, onBack, onInvite }) => {
         <h1>{trip.destination}</h1>
         <p>{trip.dates}</p>
         <div className="budget-summary">
-          <div className="budget-item">💰 Бюджет: <strong>{trip.budget?.toLocaleString()} ₽</strong></div>
-          <div className="budget-item">💸 Собрано: <strong className="text-success">{totalCollected.toLocaleString()} ₽</strong></div>
-          <div className="budget-item">💸 Потрачено: <strong className="text-danger">{totalSpent.toLocaleString()} ₽</strong></div>
-          <div className="budget-item">✅ Задач: <strong>{checklistDone}/{checklistTotal}</strong></div>
-          <div className="budget-item">👥 Участников: <strong>{Object.keys(trip.participants || {}).length}</strong></div>
+          <div className="budget-item">Бюджет: <strong>{trip.budget?.toLocaleString()} ₽</strong></div>
+          <div className="budget-item">Собрано: <strong className="text-success">{totalCollected.toLocaleString()} ₽</strong></div>
+          <div className="budget-item">Потрачено: <strong className="text-danger">{totalSpent.toLocaleString()} ₽</strong></div>
+          <div className="budget-item">Задач: <strong>{checklistDone}/{checklistTotal}</strong></div>
+          <div className="budget-item">Участников: <strong>{Object.keys(trip.participants || {}).length}</strong></div>
         </div>
       </div>
       
       <div className="trip-tabs">
         <button className={activeTab === 'checklist' ? 'active' : ''} onClick={() => setActiveTab('checklist')}>
-          ✅ Чеклист
+          Чеклист
         </button>
         <button className={activeTab === 'participants' ? 'active' : ''} onClick={() => setActiveTab('participants')}>
-          👥 Участники
+          Участники
         </button>
         <button className={activeTab === 'budget' ? 'active' : ''} onClick={() => setActiveTab('budget')}>
-          💰 Бюджет
+          Бюджет
         </button>
       </div>
       
@@ -179,7 +179,7 @@ const TripDetail = ({ trip, user, onBack, onInvite }) => {
           </div>
           <div className="checklist-items">
             {checklistTotal === 0 ? (
-              <div className="empty-checklist">📝 Чеклист пуст. Добавьте первый пункт!</div>
+              <div className="empty-checklist">Чеклист пуст. Добавьте первый пункт!</div>
             ) : (
               Object.entries(displayChecklist)
                 .sort((a, b) => {
@@ -206,11 +206,11 @@ const TripDetail = ({ trip, user, onBack, onInvite }) => {
       {activeTab === 'participants' && (
         <div className="tab-content-card">
           <div className="participants-header">
-            <h3>👥 Участники поездки</h3>
+            <h3>Участники поездки</h3>
           </div>
           <div className="participants-list">
             {Object.entries(trip.participants || {}).length === 0 ? (
-              <div className="empty-participants">👥 Пока нет участников. Пригласите друзей!</div>
+              <div className="empty-participants">Пока нет участников. Пригласите друзей!</div>
             ) : (
               Object.entries(trip.participants || {}).map(([id, p]) => (
                 <div key={id} className="participant-card">
@@ -218,7 +218,7 @@ const TripDetail = ({ trip, user, onBack, onInvite }) => {
                     <Avatar name={p.name} size={45} />
                     <div className="participant-details">
                       <div className="participant-name">{p.name}</div>
-                      <div className="participant-amount">💰 {(p.amount || 0).toLocaleString()} ₽</div>
+                      <div className="participant-amount">{(p.amount || 0).toLocaleString()} ₽</div>
                     </div>
                   </div>
                   <div className="participant-badges">
@@ -251,7 +251,7 @@ const TripDetail = ({ trip, user, onBack, onInvite }) => {
           </div>
           <div className="budget-categories">
             {Object.keys(displayBudget).length === 0 ? (
-              <div className="empty-budget">💰 Бюджет пуст. Добавьте категории расходов!</div>
+              <div className="empty-budget">Бюджет пуст. Добавьте категории расходов!</div>
             ) : (
               Object.entries(displayBudget).map(([cat, amount]) => (
                 <div key={cat} className="budget-category-card">
@@ -267,15 +267,15 @@ const TripDetail = ({ trip, user, onBack, onInvite }) => {
           </div>
           <div className="budget-total">
             <div className="total-row">
-              <span>💰 Общий бюджет:</span>
+              <span>Общий бюджет:</span>
               <strong>{trip.budget?.toLocaleString()} ₽</strong>
             </div>
             <div className="total-row">
-              <span>💸 Всего потрачено:</span>
+              <span>Всего потрачено:</span>
               <strong className="text-danger">{totalSpent.toLocaleString()} ₽</strong>
             </div>
             <div className="total-row">
-              <span>📊 Остаток:</span>
+              <span>Остаток:</span>
               <strong className={(trip.budget - totalSpent) < 0 ? 'text-danger' : 'text-success'}>
                 {(trip.budget - totalSpent).toLocaleString()} ₽
               </strong>
