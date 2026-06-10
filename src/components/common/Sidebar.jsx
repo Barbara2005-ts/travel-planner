@@ -7,7 +7,7 @@ const Sidebar = ({ user, isAdmin, currentView, onViewChange, onLogout, onShowInv
       <div className="sidebar-header">
         <div className="logo">
           <span>✈️</span>
-          <h1>TripFlow</h1>
+          <h1>Путь</h1>
         </div>
       </div>
       
