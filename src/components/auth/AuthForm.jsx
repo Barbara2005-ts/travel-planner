@@ -19,7 +19,7 @@ const AuthForm = ({ onLogin }) => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h1>✈️ TripFlow</h1>
+        <h1>✈️ Путь</h1>
         <p>Совместное планирование путешествий</p>
         <form onSubmit={handleSubmit}>
           {isRegister && (
