@@ -60,34 +60,30 @@ const AdminPanel = () => {
   return (
     <div className="admin-panel-view">
       <div className="admin-header">
-        <h2>⚙️ Панель администратора</h2>
+        <h2>Панель администратора</h2>
         <p>Управление пользователями и статистика системы</p>
       </div>
       
       <div className="admin-stats-cards">
         <div className="stat-card-primary">
-          <div className="stat-icon">👥</div>
           <div className="stat-info">
             <div className="stat-number">{stats?.totalUsers || 0}</div>
             <div className="stat-label">Всего пользователей</div>
           </div>
         </div>
         <div className="stat-card-primary success">
-          <div className="stat-icon">✈️</div>
           <div className="stat-info">
             <div className="stat-number">{stats?.totalTrips || 0}</div>
             <div className="stat-label">Всего поездок</div>
           </div>
         </div>
         <div className="stat-card-primary info">
-          <div className="stat-icon">👑</div>
           <div className="stat-info">
             <div className="stat-number">{users.filter(u => u.role === 'admin').length}</div>
             <div className="stat-label">Администраторов</div>
           </div>
         </div>
         <div className="stat-card-primary warning">
-          <div className="stat-icon">🔒</div>
           <div className="stat-info">
             <div className="stat-number">{users.filter(u => u.isBlocked).length}</div>
             <div className="stat-label">Заблокированных</div>
@@ -97,54 +93,48 @@ const AdminPanel = () => {
       
       <div className="admin-tabs">
         <button className={activeTab === 'stats' ? 'active' : ''} onClick={() => setActiveTab('stats')}>
-          📊 Статистика
+          Статистика
         </button>
         <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>
-          👥 Управление пользователями
+          Управление пользователями
         </button>
       </div>
       
       {activeTab === 'stats' && stats && (
         <div className="admin-stats-detailed">
-          <h3>📈 Детальная статистика</h3>
+          <h3>Детальная статистика</h3>
           <div className="stats-grid">
             <div className="stat-detail-card">
-              <div className="stat-detail-icon">👤</div>
               <div className="stat-detail-info">
                 <div className="stat-detail-value">{stats.totalUsers}</div>
                 <div className="stat-detail-label">Зарегистрированных пользователей</div>
               </div>
             </div>
             <div className="stat-detail-card">
-              <div className="stat-detail-icon">✈️</div>
               <div className="stat-detail-info">
                 <div className="stat-detail-value">{stats.totalTrips}</div>
                 <div className="stat-detail-label">Созданных поездок</div>
               </div>
             </div>
             <div className="stat-detail-card">
-              <div className="stat-detail-icon">👑</div>
               <div className="stat-detail-info">
                 <div className="stat-detail-value">{users.filter(u => u.role === 'admin').length}</div>
                 <div className="stat-detail-label">Администраторов</div>
               </div>
             </div>
             <div className="stat-detail-card">
-              <div className="stat-detail-icon">🔒</div>
               <div className="stat-detail-info">
                 <div className="stat-detail-value">{users.filter(u => u.isBlocked).length}</div>
                 <div className="stat-detail-label">Заблокированных пользователей</div>
               </div>
             </div>
             <div className="stat-detail-card">
-              <div className="stat-detail-icon">✅</div>
               <div className="stat-detail-info">
                 <div className="stat-detail-value">{users.filter(u => !u.isBlocked).length}</div>
                 <div className="stat-detail-label">Активных пользователей</div>
               </div>
             </div>
             <div className="stat-detail-card">
-              <div className="stat-detail-icon">📅</div>
               <div className="stat-detail-info">
                 <div className="stat-detail-value">{new Date().toLocaleDateString()}</div>
                 <div className="stat-detail-label">Текущая дата</div>
@@ -178,11 +168,11 @@ const AdminPanel = () => {
             <table className="users-table">
               <thead>
                 <tr>
-                  <th>👤 Пользователь</th>
-                  <th>📧 Email</th>
-                  <th>👑 Роль</th>
-                  <th>🔒 Статус</th>
-                  <th>⚙️ Действия</th>
+                  <th>Пользователь</th>
+                  <th>Email</th>
+                  <th>Роль</th>
+                  <th>Статус</th>
+                  <th>Действия</th>
                 </tr>
               </thead>
               <tbody>
